@@ -2,13 +2,13 @@
 const INK = '#3b2a20';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const SPECIES = {
-  chief:    { animal: 'monkey',  fur: '#9b6542', skin: '#f6dcbc', paw: '#f0cfa9', top: '#34425f', label: 'Khỉ' },
-  scan:     { animal: 'owl',     fur: '#8c7556', skin: '#f1e3c6', paw: '#8c7556', top: '#d1a23d', label: 'Cú' },
-  tech:     { animal: 'raccoon', fur: '#9fa1a3', skin: '#efede6', paw: '#4c4a50', top: '#6f8a57', label: 'Gấu mèo' },
-  writer:   { animal: 'rabbit',  fur: '#f5f0e6', skin: '#f5f0e6', paw: '#f5f0e6', top: '#7c98b3', label: 'Thỏ' },
-  local:    { animal: 'panda',   fur: '#fbfaf6', skin: '#fbfaf6', paw: '#2f2a28', top: '#2f2a28', label: 'Gấu trúc' },
-  outreach: { animal: 'fox',     fur: '#d27a3c', skin: '#f8eddc', paw: '#5a3a28', top: '#b4523a', label: 'Cáo' },
-  report:   { animal: 'penguin', fur: '#36394a', skin: '#fbfaf6', paw: '#36394a', top: '#36394a', label: 'Cánh cụt' },
+  chief:    { animal: 'monkey',  fur: '#9b6542', skin: '#f6dcbc', paw: '#f0cfa9', top: '#34425f', label: 'Khỉ', name: 'Tyler Co' },
+  scan:     { animal: 'owl',     fur: '#8c7556', skin: '#f1e3c6', paw: '#8c7556', top: '#d1a23d', label: 'Cú', name: 'Cú Minh' },
+  tech:     { animal: 'chicken', fur: '#fbf3e4', skin: '#fbf3e4', paw: '#f1dfbf', top: '#6f8a57', label: 'Gà', name: 'Nick Quach' },
+  writer:   { animal: 'rabbit',  fur: '#f5f0e6', skin: '#f5f0e6', paw: '#f5f0e6', top: '#7c98b3', label: 'Thỏ', name: 'Thỏ nhinhanh' },
+  local:    { animal: 'panda',   fur: '#fbfaf6', skin: '#fbfaf6', paw: '#2f2a28', top: '#2f2a28', label: 'Gấu trúc', name: 'Bobb' },
+  outreach: { animal: 'fox',     fur: '#d27a3c', skin: '#f8eddc', paw: '#5a3a28', top: '#b4523a', label: 'Cáo', name: 'Cáo ML' },
+  report:   { animal: 'penguin', fur: '#36394a', skin: '#fbfaf6', paw: '#36394a', top: '#36394a', label: 'Cánh cụt', name: 'Cụt Tín' },
 };
 const DARK_PAW = ['#2f2a28', '#36394a', '#4c4a50', '#5a3a28'];
 const S = (fill, extra = '') => `fill="${fill}" stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
@@ -44,6 +44,16 @@ function head(kind, mode) {
       <circle cx="-18" cy="2" r="19" ${L(3.5)}/><circle cx="18" cy="2" r="19" ${L(3.5)}/><path d="M -1,0 Q 0,-4 1,0" ${L(3.5)}/>
       <path d="M -6,16 L 0,27 L 6,16 Q 0,12 -6,16 Z" ${S('#e2a23b', 'stroke-width="3"')}/>
       ${blush(36, 24)}`;
+    case 'chicken': return `
+      <path d="M -20,-40 Q -26,-64 -10,-60 Q -6,-78 6,-66 Q 16,-78 21,-58 Q 31,-58 24,-38 Z" ${S('#c9543c')}/>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M -26,-26 Q -18,-33 -10,-27 M 10,-27 Q 18,-33 26,-26" ${L(3, 'opacity=".35"')}/>
+      ${eyes(m, 17, 0)}${blush(30, 15)}
+      <path d="M -5,19 Q -9,35 0,36 Q 9,35 5,19 Z" ${S('#c9543c', 'stroke-width="3"')}/>
+      <path d="M -11,8 Q 0,3 11,8 L 0,22 Z" ${S('#e2a23b', 'stroke-width="3"')}/>
+      <path d="M -54,4 C -56,-72 56,-72 54,4" ${L(7)}/><path d="M -54,4 C -56,-72 56,-72 54,4" fill="none" stroke="#4f7393" stroke-width="3"/>
+      <rect x="-62" y="-8" width="15" height="25" rx="6" ${S('#4f7393', 'stroke-width="3.5"')}/><rect x="47" y="-8" width="15" height="25" rx="6" ${S('#4f7393', 'stroke-width="3.5"')}/>
+      <path d="M -54,15 Q -46,36 -20,34" ${L(3.5)}/><circle cx="-18" cy="34" r="4" ${S(INK, 'stroke-width="2"')}/>`;
     case 'raccoon': return `
       <g transform="rotate(-24 -33 -38)"><ellipse cx="-33" cy="-38" rx="14" ry="17" ${S(sp.fur)}/><ellipse cx="-33" cy="-36" rx="7" ry="9" ${N('#5a5960')}/></g>
       <g transform="rotate(24 33 -38)"><ellipse cx="33" cy="-38" rx="14" ry="17" ${S(sp.fur)}/><ellipse cx="33" cy="-36" rx="7" ry="9" ${N('#5a5960')}/></g>
@@ -96,6 +106,7 @@ function torso(kind) {
       <rect x="25" y="-63" width="11" height="6" rx="1.5" ${S('#fbfaf6', 'stroke-width="2.5"')}/>
       <circle cx="0" cy="-16" r="3" ${S('#d9b25a', 'stroke-width="2"')}/>`;
     case 'owl': return `<path d="${shape}" ${S(sp.top)}/><path d="M -16,-76 Q 0,-58 16,-76" ${L(3.5)}/><path d="M -30,-46 L -30,-20 M 30,-46 L 30,-20" ${L(3, 'opacity=".5"')}/>`;
+    case 'chicken': return `<path d="${shape}" ${S(sp.fur)}/><path d="M -30,-50 L 30,-50 L 27,0 L -27,0 Z" ${S(sp.top, 'stroke-width="3.5"')}/><path d="M -30,-50 L -22,-76 M 30,-50 L 22,-76" ${L(4)}/><rect x="-12" y="-34" width="24" height="16" rx="3" ${S('#86a26c', 'stroke-width="3"')}/>`;
     case 'raccoon': return `<path d="${shape}" ${S(sp.fur)}/><path d="M -28,-48 L 28,-48 L 26,0 L -26,0 Z" ${S(sp.top, 'stroke-width="3.5"')}/><path d="M -28,-48 L -22,-76 M 28,-48 L 22,-76" ${L(4)}/>`;
     case 'rabbit': return `<path d="${shape}" ${S(sp.top)}/><path d="M -20,-76 Q 0,-62 20,-76" ${S('#fbfaf6', 'stroke-width="3.5"')}/><path d="M -36,-40 L 36,-40 M -38,-26 L 38,-26" ${L(2.5, 'opacity=".35"')}/>`;
     case 'panda': return `<path d="${shape}" ${S('#fbfaf6')}/><path d="M -47,4 L -42,-56 Q -40,-74 -22,-76 L -10,-76 Q -30,-40 -30,4 Z" ${S('#2f2a28', 'stroke-width="3.5"')}/><path d="M 47,4 L 42,-56 Q 40,-74 22,-76 L 10,-76 Q 30,-40 30,4 Z" ${S('#2f2a28', 'stroke-width="3.5"')}/><path d="M -10,-74 L 0,-68 L 10,-74 L 10,-62 L 0,-68 L -10,-62 Z" ${S('#c9543c', 'stroke-width="3"')}/>`;
@@ -126,6 +137,7 @@ function laptop(x, color) {
 function prop(kind, x) {
   switch (SPECIES[kind].animal) {
     case 'owl': return `<g transform="translate(${x} -8) rotate(-25)"><rect x="-3" y="-2" width="6" height="22" rx="2" ${S('#8c5a34', 'stroke-width="3"')}/><circle cx="0" cy="-14" r="13" ${S('#e8f1f2', 'stroke-width="3.5"')}/><path d="M -5,-19 Q -2,-22 2,-21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></g>`;
+    case 'chicken':
     case 'raccoon': return `<g transform="translate(${x} -2)"><rect x="-22" y="-20" width="44" height="20" rx="3" ${S('#b8483a', 'stroke-width="3.5"')}/><path d="M -10,-20 L -10,-28 L 10,-28 L 10,-20" ${L(3.5)}/><path d="M -22,-11 L 22,-11" ${L(3)}/></g>`;
     case 'rabbit': return `<g transform="translate(${x} -2) rotate(-6)"><rect x="-20" y="-8" width="40" height="8" rx="2" ${S('#fbfaf6', 'stroke-width="3"')}/><rect x="-20" y="-15" width="40" height="7" rx="2" ${S('#7c98b3', 'stroke-width="3"')}/></g>`;
     case 'panda': return `<g transform="translate(${x} -2)"><path d="M -20,0 L -20,-26 L -6,-26 L -2,-21 L 20,-21 L 20,0 Z" ${S('#e2b13f', 'stroke-width="3.5"')}/><path d="M -20,0 L -16,-14 L 24,-14 L 20,0 Z" ${S('#efc965', 'stroke-width="3.5"')}/></g>`;
@@ -157,12 +169,12 @@ function station(bot, x, y, st, chief) {
     s += `<rect x="${-w / 2 + 16}" y="16" width="70" height="56" rx="5" ${S(dk, 'stroke-width="3.5"')}/><rect x="${w / 2 - 86}" y="16" width="70" height="56" rx="5" ${S(dk, 'stroke-width="3.5"')}/>`;
     s += `<circle cx="${-w / 2 + 51}" cy="44" r="4" ${S('#e2b13f', 'stroke-width="2.5"')}/><circle cx="${w / 2 - 51}" cy="44" r="4" ${S('#e2b13f', 'stroke-width="2.5"')}/>`;
   }
-  const npY = chief ? 24 : 20, npW = chief ? 112 : 108, npH = chief ? 46 : 42;
+  const npY = chief ? 24 : 20, npW = chief ? 136 : 132, npH = chief ? 46 : 42;
   const dot = mode === 'on' ? '#4f8a3c' : mode === 'wait' ? '#c98a17' : '#a3958a';
   s += `<rect x="${-npW / 2}" y="${npY}" width="${npW}" height="${npH}" rx="9" ${S(chief ? '#efd38a' : '#fffaf0', 'stroke-width="3.5"')}/>`;
-  s += `<text x="${-npW / 2 + 12}" y="${npY + 18}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" letter-spacing=".5" fill="${INK}">${esc(bot.ma)}</text>`;
+  s += `<text x="${-npW / 2 + 12}" y="${npY + 18}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" letter-spacing=".5" fill="${INK}">${esc(SPECIES[bot.bot].name || bot.ma)}</text>`;
   s += `<circle cx="${npW / 2 - 14}" cy="${npY + 13}" r="5" ${S(dot, 'stroke-width="2.5"')}/>`;
-  s += `<text x="${-npW / 2 + 12}" y="${npY + 34}" font-family="Be Vietnam Pro, sans-serif" font-weight="500" font-size="11.5" fill="#6e5b4c">${esc(bot.ten)}</text>`;
+  s += `<text x="${-npW / 2 + 12}" y="${npY + 34}" font-family="Be Vietnam Pro, sans-serif" font-weight="500" font-size="11.5" fill="#6e5b4c">${esc(bot.ma + ' · ' + bot.ten)}</text>`;
   if (chief) {
     s += `<g transform="translate(-112 0)"><path d="M -12,-4 L 12,-4 L 8,-12 L -8,-12 Z" ${S('#c9a24c', 'stroke-width="3"')}/><path d="M 0,-12 L 0,-46" ${L(3.5)}/><path d="M -22,-44 Q 0,-66 22,-44 Z" ${S('#3f6e4f', 'stroke-width="3.5"')}/></g>`;
     s += `<g transform="translate(96 -2)"><path d="M -24,-4 L 20,-4 L 24,-14 L -20,-14 Z" ${S('#fbfaf6', 'stroke-width="3"')}/><path d="M -22,-14 L 22,-14 L 26,-24 L -18,-24 Z" ${S('#f3eedf', 'stroke-width="3"')}/></g>`;

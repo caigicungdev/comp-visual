@@ -129,6 +129,7 @@ function miniTorso(id) {
     case 'monkey': return `<path d="${base}" ${T(sp.top, 3)}/><path d="M -6,-32 L 0,-18 L 6,-32 Z" ${T('#fbfaf6', 2.5)}/><path d="M -2,-29 L 2,-29 L 3,-14 L 0,-10 L -3,-14 Z" ${T('#b8483a', 2)}/>`;
     case 'panda': return `<path d="${base}" ${T('#fbfaf6', 3)}/><path d="M -18,-2 Q -19,-31 -6,-33 L -10,-2 Z M 18,-2 Q 19,-31 6,-33 L 10,-2 Z" ${T('#2f2a28', 2.5)}/>`;
     case 'penguin': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -10,-2 Q -12,-26 0,-29 Q 12,-26 10,-2 Z" fill="#fbfaf6"/><path d="M -5,-30 L 0,-27 L 5,-30 L 5,-24 L 0,-27 L -5,-24 Z" ${T('#c9543c', 2)}/>`;
+    case 'chicken':
     case 'raccoon': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -11,-22 L 11,-22 L 10,-2 L -10,-2 Z" ${T(sp.top, 2.5)}/>`;
     case 'fox': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -13,-32 Q 0,-26 13,-32 L 12,-26 Q 0,-20 -12,-26 Z" ${T(sp.top, 2.5)}/>`;
     default: return `<path d="${base}" ${T(sp.top, 3)}/>`;
@@ -138,7 +139,7 @@ function spriteSVG(id, mode) {
   const sp = SPECIES[id];
   return `<g class="flip">
     <ellipse cx="0" cy="2" rx="21" ry="7" fill="${INK}" opacity=".18"/>
-    <g class="feet"><ellipse class="fl" cx="-8" cy="-2" rx="7" ry="5" ${T(DARK_PAW.includes(sp.paw) ? sp.paw : sp.fur === '#f5f0e6' ? '#f5f0e6' : sp.paw, 2.5)}/><ellipse class="fr" cx="8" cy="-2" rx="7" ry="5" ${T(DARK_PAW.includes(sp.paw) ? sp.paw : sp.fur === '#f5f0e6' ? '#f5f0e6' : sp.paw, 2.5)}/></g>
+    <g class="feet"><ellipse class="fl" cx="-8" cy="-2" rx="7" ry="5" ${T(sp.animal === 'chicken' ? '#e2a23b' : sp.paw, 2.5)}/><ellipse class="fr" cx="8" cy="-2" rx="7" ry="5" ${T(sp.animal === 'chicken' ? '#e2a23b' : sp.paw, 2.5)}/></g>
     <g class="bodyg">
       <ellipse cx="-19" cy="-16" rx="5.5" ry="9" ${T(sp.paw, 2.5)}/><ellipse cx="19" cy="-16" rx="5.5" ry="9" ${T(sp.paw, 2.5)}/>
       ${miniTorso(id)}
@@ -212,7 +213,7 @@ function start(D) {
     const s = state[b.bot];
     const btn = el('button', 'mate'); btn.type = 'button'; btn.dataset.bot = b.bot; btn.setAttribute('aria-pressed', 'false');
     const txt = el('span'); const small = el('small'); small.append(el('i', s.st === 'on' ? 'on' : s.st === 'wait' ? 'wait' : ''), document.createTextNode(s.label));
-    txt.append(el('b', null, b.ma), small);
+    txt.append(el('b', null, SPECIES[b.bot].name), small);
     btn.append(avatar(b.bot, s.st === 'idle' ? 'idle' : 'on'), txt);
     btn.addEventListener('click', () => { if (location.hash) location.hash = ''; select(b.bot, true); });
     roster.append(btn);
@@ -231,8 +232,8 @@ function start(D) {
     st.innerHTML = `<g transform="translate(22 -78) scale(.5)">${bubble(s.st, 0, 0)}</g>`;
     g.append(st);
     const tag = document.createElementNS(NS, 'g');
-    const tw = b.ma.length * 8 + 16;
-    tag.innerHTML = `<rect x="${-tw / 2}" y="-118" width="${tw}" height="20" rx="10" ${T('#fffaf0', 2.5)}/><text x="0" y="-103.5" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="12" fill="${colors[b.bot]}">${esc(b.ma)}</text>`;
+    const nm = SPECIES[b.bot].name, tw = nm.length * 7.2 + 18;
+    tag.innerHTML = `<rect x="${-tw / 2}" y="-118" width="${tw}" height="20" rx="10" ${T('#fffaf0', 2.5)}/><text x="0" y="-103.5" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="12" fill="${colors[b.bot]}">${esc(nm)}</text>`;
     g.append(tag);
     actorsG.append(g);
     const [x, y] = HOME[b.bot];
@@ -262,7 +263,7 @@ function start(D) {
   const setFollow = (id) => {
     follow = id;
     document.getElementById('follow').hidden = !id;
-    if (id) { document.getElementById('follow-name').textContent = 'Đang theo dõi ' + BOT[id].ma + ' · ' + SPECIES[id].label; camT.z = Math.max(camT.z, 2.4); }
+    if (id) { document.getElementById('follow-name').textContent = 'Đang theo dõi ' + SPECIES[id].name + ' · ' + BOT[id].ma; camT.z = Math.max(camT.z, 2.4); }
     roster.querySelectorAll('.mate').forEach((m) => m.setAttribute('aria-pressed', String(m.dataset.bot === id)));
   };
   document.getElementById('unfollow').addEventListener('click', () => { select(null); });
@@ -454,7 +455,7 @@ function start(D) {
       return;
     }
     const id = selected, b = BOT[id], s = state[id];
-    const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, b.ma + ' · ' + SPECIES[id].label), el('span', null, b.ten + ' · ' + deptName(id)));
+    const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, SPECIES[id].name), el('span', null, b.ma + ' · ' + SPECIES[id].label + ' · ' + b.ten + ' · ' + deptName(id)));
     who.append(avatar(id, s.st === 'idle' ? 'idle' : 'on'), t);
     const pill = el('span', 'pill' + (s.st === 'on' ? ' on' : s.st === 'wait' ? ' wait' : '')); pill.append(el('i'), document.createTextNode(s.label));
     const now = el('div', 'box'); now.append(el('span', 'k', 'Việc đang làm'), document.createTextNode(s.task));
@@ -486,7 +487,7 @@ function start(D) {
     roomView.replaceChildren();
     const top = el('div', 'room-top card');
     const back = el('button', 'btn ghost', '← Bản đồ'); back.type = 'button'; back.addEventListener('click', () => { location.hash = ''; });
-    const tt = el('div', 'grow'); tt.append(el('h2', null, d.name), el('span', null, d.members.length ? d.members.map((m) => BOT[m].ma + ' · ' + SPECIES[m].label).join('  ·  ') : (id === 'cafe' ? 'Nơi các bạn nghỉ tay' : 'Nơi cả đội họp và xem số liệu')));
+    const tt = el('div', 'grow'); tt.append(el('h2', null, d.name), el('span', null, d.members.length ? d.members.map((m) => SPECIES[m].name + ' (' + SPECIES[m].label + ', ' + BOT[m].ma + ')').join('  ·  ') : (id === 'cafe' ? 'Nơi các bạn nghỉ tay' : 'Nơi cả đội họp và xem số liệu')));
     const doors = el('div', 'doors');
     Object.keys(DEPTS).filter((k) => k !== id).forEach((k) => { const b = el('button', 'btn ghost', DEPTS[k].name); b.type = 'button'; b.style.fontSize = '13px'; b.style.padding = '4px 10px'; b.addEventListener('click', () => { location.hash = 'phong-' + k; }); doors.append(b); });
     top.append(back, tt, doors);
@@ -495,7 +496,7 @@ function start(D) {
     const grid = el('div', 'room-grid');
     d.members.forEach((m) => {
       const s = state[m]; const c = el('div', 'member card');
-      const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, BOT[m].ma + ' · ' + SPECIES[m].label), el('span', null, BOT[m].ten));
+      const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, SPECIES[m].name), el('span', null, BOT[m].ma + ' · ' + SPECIES[m].label + ' · ' + BOT[m].ten));
       who.append(avatar(m, s.st === 'idle' ? 'idle' : 'on'), t);
       const pill = el('span', 'pill' + (s.st === 'on' ? ' on' : s.st === 'wait' ? ' wait' : '')); pill.append(el('i'), document.createTextNode(s.label));
       const box = el('div', 'box'); box.append(el('span', 'k', 'Việc đang làm'), document.createTextNode(s.task));
