@@ -1,0 +1,8 @@
+# Số liệu gốc và mật khẩu: không bao giờ đẩy lên GitHub
+data/
+.password
+MAT-KHAU*.txt
+.env
+node_modules/
+__pycache__/
+.DS_Store

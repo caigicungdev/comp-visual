@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Văn phòng bot · TicoSystem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: simulation game — HUD bar, a pannable top-down office map with a side inspector, report panels below; each room opens as its own page. */
+:root {
+  --page: #e6eadf; --paper: #fffdf8; --paper-2: #f7f3ea; --ink: #3b2a20; --ink-2: #6e5b4c; --ink-3: #a3958a; --rule: #d9d2c4;
+  --ok: #4f8a3c; --warn: #c98a17; --bad: #b8483a;
+  --f-display: "Baloo 2", "Be Vietnam Pro", system-ui, sans-serif;
+  --f-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 16px; --shadow: 3px 4px 0 rgba(59,42,32,.9);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; min-height: 100vh;
+  background-image: radial-gradient(rgba(59,42,32,.07) 1px, transparent 1.4px); background-size: 18px 18px; }
+.wrap { max-width: 1480px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+[hidden] { display: none !important; }
+.card { background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--r); box-shadow: var(--shadow); }
+button { font: inherit; color: inherit; }
+.btn { font: 700 15px var(--f-display); padding: 8px 14px; border-radius: 12px; border: 2.5px solid var(--ink); background: #e9b949; color: var(--ink); cursor: pointer; box-shadow: 2px 3px 0 var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { background: #f0c45a; }
+.btn:active { transform: translate(2px, 3px); box-shadow: none; }
+.btn.ghost { background: var(--paper); }
+.btn.ghost:hover { background: var(--paper-2); }
+.btn:focus-visible, .icon-btn:focus-visible { outline: 3px solid #4f7393; outline-offset: 3px; }
+
+/* lock */
+.lock { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.lock-card { width: min(400px, 100%); padding: 28px 26px; display: flex; flex-direction: column; gap: 16px; }
+.lock-ava { width: 110px; height: 110px; align-self: center; }
+.lock h1 { margin: 0; font: 700 26px/1.15 var(--f-display); text-align: center; }
+.lock p { margin: 0; color: var(--ink-2); text-align: center; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font: 600 13px var(--f-display); color: var(--ink-2); }
+.field input { font: 16px var(--f-body); padding: 11px 14px; border-radius: 12px; border: 2.5px solid var(--ink); background: var(--paper-2); color: var(--ink); outline: none; }
+.field input:focus { background: #fff; box-shadow: 0 0 0 4px rgba(201,138,23,.25); }
+.err { color: var(--bad); font-size: 13px; min-height: 1.2em; text-align: center; }
+
+/* hud */
+.hud { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 8px 14px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 46px; height: 46px; flex: none; }
+.brand b { font: 800 20px/1 var(--f-display); display: block; }
+.brand span { font-size: 12px; color: var(--ink-2); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: 600 13px var(--f-display); padding: 3px 12px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip.live { background: #e3efd8; }
+.chip.live::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 7px; border: 1.5px solid var(--ink); }
+
+/* roster */
+.roster { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.mate { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 2.5px solid var(--ink); background: var(--paper); cursor: pointer; box-shadow: 2px 3px 0 var(--ink); }
+.mate:hover { background: var(--paper-2); }
+.mate[aria-pressed="true"] { background: #f7e7c3; }
+.mate svg { width: 36px; height: 36px; flex: none; }
+.mate b { font: 800 13px/1 var(--f-display); letter-spacing: .04em; display: block; }
+.mate small { font: 600 11px/1.2 var(--f-display); color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; }
+.mate small i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--ink-3); }
+.mate small i.on { background: var(--ok); } .mate small i.wait { background: var(--warn); }
+
+/* game */
+.game-row { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: stretch; }
+.game { position: relative; overflow: hidden; height: clamp(440px, 70vh, 780px); padding: 0; background: #cfc4b0; touch-action: none; user-select: none; -webkit-user-select: none; }
+.game svg { display: block; width: 100%; height: 100%; cursor: grab; }
+.game svg.dragging { cursor: grabbing; }
+.game .room-hit { cursor: pointer; }
+.game .room-hit:hover { fill: rgba(255, 250, 235, .22); }
+.game [data-bot] { cursor: pointer; }
+.ctrl { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.icon-btn { width: 42px; height: 42px; border-radius: 12px; border: 2.5px solid var(--ink); background: var(--paper); box-shadow: 2px 3px 0 var(--ink); cursor: pointer; font: 800 20px/1 var(--f-display); display: grid; place-items: center; }
+.icon-btn:hover { background: var(--paper-2); }
+.icon-btn:active { transform: translate(2px, 3px); box-shadow: none; }
+.hint { position: absolute; left: 12px; bottom: 12px; font: 600 12px var(--f-display); background: rgba(255,253,248,.92); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px; color: var(--ink-2); max-width: calc(100% - 24px); }
+.follow-tag { position: absolute; left: 12px; top: 12px; font: 700 13px var(--f-display); background: #f7e7c3; border: 2px solid var(--ink); border-radius: 999px; padding: 3px 12px; display: flex; gap: 8px; align-items: center; }
+.follow-tag button { border: 0; background: none; cursor: pointer; font: 800 14px var(--f-display); padding: 0 2px; }
+
+.side { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; max-height: clamp(440px, 70vh, 780px); overflow: auto; }
+.side h2, .panel h2, .room-page h2 { margin: 0; font: 800 18px/1.2 var(--f-display); }
+.side-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.side-h span { font: 600 12px var(--f-display); color: var(--ink-2); }
+.who { display: flex; gap: 12px; align-items: center; }
+.who svg { width: 72px; height: 72px; flex: none; background: var(--paper-2); border: 2.5px solid var(--ink); border-radius: 50%; }
+.who b { font: 800 20px/1.1 var(--f-display); display: block; }
+.who span { color: var(--ink-2); font-size: 13px; }
+.pill { font: 600 12px var(--f-display); display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 999px; border: 2px solid var(--ink); background: var(--paper-2); align-self: flex-start; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); border: 1.5px solid var(--ink); }
+.pill.on { background: #e3efd8; } .pill.on i { background: var(--ok); }
+.pill.wait { background: #f7e7c3; } .pill.wait i { background: var(--warn); }
+.box { background: var(--paper-2); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 12px; font-size: 13px; }
+.box .k { font: 700 12px var(--f-display); color: var(--ink-2); display: block; }
+.feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.feed li { padding: 7px 0; border-bottom: 2px dashed var(--rule); font-size: 13px; line-height: 1.4; display: grid; grid-template-columns: 40px 1fr; gap: 6px; }
+.feed .t { font: 600 12px var(--f-display); color: var(--ink-3); }
+.tag { font: 800 11px var(--f-display); letter-spacing: .05em; padding: 0 6px; border-radius: 6px; color: #fff; border: 1.5px solid var(--ink); white-space: nowrap; margin-right: 4px; }
+.feed .r { display: block; color: var(--ink-2); font-size: 12.5px; }
+.note { font-size: 12px; color: var(--ink-3); margin: 0; }
+
+/* panels */
+.ops { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 16px; }
+.panel { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.panel-h span { font: 600 12px var(--f-display); color: var(--ink-2); }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kpi { background: var(--paper-2); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 12px; }
+.kpi .k { font: 600 12px var(--f-display); color: var(--ink-2); display: block; }
+.kpi .v { font: 800 26px/1.1 var(--f-display); font-variant-numeric: tabular-nums; display: block; }
+.kpi .s { font-size: 11px; color: var(--ink-3); }
+.qmap { position: relative; }
+.qmap svg { display: block; width: 100%; height: auto; }
+.tip { position: absolute; pointer-events: none; background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; padding: 6px 9px; font-size: 12px; line-height: 1.4; max-width: 240px; z-index: 2; box-shadow: 2px 2px 0 var(--ink); }
+.tip .s { color: var(--ink-2); }
+.timeline { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
+.day { display: flex; flex-direction: column; gap: 4px; }
+.day .d { font: 700 11px var(--f-display); color: var(--ink-3); text-align: center; }
+.day.today .d { color: var(--ink); text-decoration: underline 2px; text-underline-offset: 3px; }
+.blk { height: 16px; border-radius: 5px; background: var(--paper-2); border: 2px solid var(--ink); }
+.blk.done { background: #8dbb6f; } .blk.wait { background: #f0c45a; } .blk.doing { background: #9cb7d2; }
+.tl-legend { display: flex; gap: 14px; font: 600 12px var(--f-display); color: var(--ink-2); flex-wrap: wrap; }
+.tl-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; border: 2px solid var(--ink); margin-right: 6px; vertical-align: -2px; background: var(--paper-2); }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.list li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 13px; }
+.list .st { display: block; font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.list .st.wait { color: #8a5d08; font-weight: 600; }
+.list .st.done { color: var(--ok); font-weight: 600; }
+.tg { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-size: 13px; }
+.tg .bar { grid-column: 1 / -1; }
+.tg .chip { font-size: 12px; padding: 0 9px; }
+.bar { height: 9px; background: var(--paper-2); border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: #9cb7d2; }
+.issues { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.issue { background: var(--paper-2); border: 2px solid var(--ink); border-radius: 12px; padding: 8px 10px; }
+.issue .v { font: 800 26px/1.1 var(--f-display); display: block; }
+.issue .k { font: 600 12px var(--f-display); color: var(--ink-2); }
+.foot { color: var(--ink-2); font: 600 12px var(--f-display); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+/* room page */
+.room-page { display: flex; flex-direction: column; gap: 16px; }
+.room-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 10px 14px; }
+.room-top h2 { font-size: 24px; }
+.room-top span { color: var(--ink-2); font: 600 13px var(--f-display); }
+.room-top .grow { flex: 1; }
+.room-view { padding: 0; overflow: hidden; }
+.room-view { display: grid; place-items: center; background: #cfc4b0; }
+.room-view svg { display: block; width: 100%; height: auto; max-height: 64vh; max-width: calc(64vh * 2); }
+.room-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.member { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.contact { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.doors { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim .typing .pl { animation: tap .42s ease-in-out infinite alternate; }
+  .anim .typing .pr { animation: tap .42s ease-in-out .21s infinite alternate; }
+  @keyframes tap { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+  .anim .eyes { transform-box: fill-box; transform-origin: center; animation: blink 5s infinite; }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  .anim .bob { transform-box: fill-box; transform-origin: 50% 100%; animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+  .anim .breathe { transform-box: fill-box; transform-origin: 50% 100%; animation: breathe 4s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.97); } }
+  .anim .dots circle { animation: dot 1.1s ease-in-out infinite; }
+  .anim .dots circle:nth-child(2) { animation-delay: .18s; } .anim .dots circle:nth-child(3) { animation-delay: .36s; }
+  @keyframes dot { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+  .anim .zz text { animation: zz 3s ease-in infinite; opacity: 0; }
+  .anim .zz text:nth-child(2) { animation-delay: 1s; } .anim .zz text:nth-child(3) { animation-delay: 2s; }
+  @keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(14px, -30px); } }
+  .anim .bang { transform-box: fill-box; transform-origin: 50% 100%; animation: bang 1.4s ease-in-out infinite; }
+  @keyframes bang { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  .anim .steam path { stroke-dasharray: 4 6; animation: steam 1.6s linear infinite; }
+  @keyframes steam { to { stroke-dashoffset: -20; } }
+  .anim .leaf { transform-box: fill-box; transform-origin: 50% 100%; animation: sway 6s ease-in-out infinite; }
+  @keyframes sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+  .anim .led { animation: led 1.3s steps(2) infinite; }
+  @keyframes led { 50% { opacity: .25; } }
+  .anim .walking .fl { animation: step .32s ease-in-out infinite alternate; }
+  .anim .walking .fr { animation: step .32s ease-in-out .16s infinite alternate; }
+  @keyframes step { from { transform: translateY(0); } to { transform: translateY(-4px); } }
+  .anim .pop { animation: pop .25s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+}
+
+@media (max-width: 1100px) {
+  .game-row { grid-template-columns: 1fr; }
+  .side { max-height: none; }
+  .ops { grid-template-columns: 1fr 1fr; }
+  .ops > :first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .ops { grid-template-columns: 1fr; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .timeline { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .game { height: 64vh; }
+  .hint { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="lock" id="lock">
+  <form class="lock-card card" id="lock-form" autocomplete="off">
+    <svg class="lock-ava" id="lock-ava" viewBox="-75 -80 150 150" aria-hidden="true"></svg>
+    <h1>Văn phòng bot SEO</h1>
+    <p>Trang nội bộ của TicoSystem. Nhập mật khẩu của đội để vào văn phòng.</p>
+    <div class="field">
+      <label for="pw">Mật khẩu</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn" type="submit" style="justify-content:center">Vào văn phòng</button>
+    <div class="err" id="err" role="alert"></div>
+  </form>
+</section>
+
+<main class="wrap" id="app" hidden>
+  <header class="hud card">
+    <div class="brand"><svg id="brand-ava" viewBox="-75 -80 150 150" aria-hidden="true"></svg><div><b>Văn phòng bot SEO</b><span id="site-name"></span></div></div>
+    <div class="chips"><span class="chip live" id="chip-live"></span><span class="chip">Ngày <span id="chip-day"></span>/15</span><span class="chip" id="chip-clock"></span></div>
+  </header>
+
+  <section id="view-map">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <nav class="roster" id="roster" aria-label="Nhân viên"></nav>
+      <div class="game-row">
+        <div class="game card" id="game">
+          <svg id="map" aria-label="Bản đồ văn phòng" role="img"></svg>
+          <div class="ctrl">
+            <button class="icon-btn" id="zin" aria-label="Phóng to">+</button>
+            <button class="icon-btn" id="zout" aria-label="Thu nhỏ">−</button>
+            <button class="icon-btn" id="zfit" aria-label="Xem toàn cảnh" style="font-size:15px">⤢</button>
+          </div>
+          <div class="follow-tag" id="follow" hidden><span id="follow-name"></span><button id="unfollow" aria-label="Thôi theo dõi">✕</button></div>
+          <div class="hint" id="hint">Kéo để di chuyển · cuộn hoặc chụm để phóng to · bấm nhân vật để theo dõi · bấm phòng để vào phòng</div>
+        </div>
+        <aside class="side card" id="side"></aside>
+      </div>
+      <section class="ops">
+        <div class="panel card">
+          <div class="panel-h"><h2>Search Console</h2><span id="gsc-range"></span></div>
+          <div class="kpis" id="kpis"></div>
+          <div class="qmap" id="qmap"></div>
+        </div>
+        <div class="panel card">
+          <div class="panel-h"><h2>Lịch 15 ngày</h2><span id="tl-progress"></span></div>
+          <div class="timeline" id="timeline"></div>
+          <div class="tl-legend"><span><i style="background:#8dbb6f"></i>Xong</span><span><i style="background:#f0c45a"></i>Chờ bạn</span><span><i></i>Chưa làm</span></div>
+          <div class="panel-h" style="margin-top:4px"><h2>Hôm nay</h2><span id="today-date"></span></div>
+          <ul class="list" id="today"></ul>
+        </div>
+        <div class="panel card">
+          <div class="panel-h"><h2>Mục tiêu ngày 15</h2><span>6/11/2026</span></div>
+          <div class="list" id="targets"></div>
+          <div class="panel-h" style="margin-top:4px"><h2>Lỗi kỹ thuật</h2><span id="audit-open"></span></div>
+          <div class="issues" id="issues"></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section id="view-room" class="room-page" hidden></section>
+
+  <footer class="foot"><span id="foot-upd"></span><span>Số liệu thật: Google Search Console, kế hoạch và nhật ký · Cảnh đi lại, trò chuyện: mô phỏng theo kế hoạch</span></footer>
+</main>
+
+<script>
+let PAYLOAD = null;
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function unlock(pw) {
+  if (!PAYLOAD) PAYLOAD = await (await fetch('data.enc.json?v=' + Date.now(), { cache: 'no-store' })).json();
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const k = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(PAYLOAD.salt), iterations: PAYLOAD.iter, hash: 'SHA-256' }, key, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(PAYLOAD.iv) }, k, b64(PAYLOAD.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+/* ======================= drawing kit ======================= */
+const INK = '#3b2a20';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SPECIES = {
+  chief:    { animal: 'monkey',  fur: '#9b6542', skin: '#f6dcbc', paw: '#f0cfa9', top: '#34425f', label: 'Khỉ' },
+  scan:     { animal: 'owl',     fur: '#8c7556', skin: '#f1e3c6', paw: '#8c7556', top: '#d1a23d', label: 'Cú' },
+  tech:     { animal: 'raccoon', fur: '#9fa1a3', skin: '#efede6', paw: '#4c4a50', top: '#6f8a57', label: 'Gấu mèo' },
+  writer:   { animal: 'rabbit',  fur: '#f5f0e6', skin: '#f5f0e6', paw: '#f5f0e6', top: '#7c98b3', label: 'Thỏ' },
+  local:    { animal: 'panda',   fur: '#fbfaf6', skin: '#fbfaf6', paw: '#2f2a28', top: '#2f2a28', label: 'Gấu trúc' },
+  outreach: { animal: 'fox',     fur: '#d27a3c', skin: '#f8eddc', paw: '#5a3a28', top: '#b4523a', label: 'Cáo' },
+  report:   { animal: 'penguin', fur: '#36394a', skin: '#fbfaf6', paw: '#36394a', top: '#36394a', label: 'Cánh cụt' },
+};
+const DARK_PAW = ['#2f2a28', '#36394a', '#4c4a50', '#5a3a28'];
+const S = (fill, extra = '') => `fill="${fill}" stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
+const N = (fill, extra = '') => `fill="${fill}" stroke="none" ${extra}`;
+const L = (w = 4, extra = '') => `fill="none" stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
+
+function eyes(mode, dx = 16, y = 2, white = false) {
+  if (mode === 'sleep') return `<path d="M ${-dx - 7},${y} Q ${-dx},${y + 6} ${-dx + 7},${y}" ${L(3.5)}/><path d="M ${dx - 7},${y} Q ${dx},${y + 6} ${dx + 7},${y}" ${L(3.5)}/>`;
+  const one = (x) => (white ? `<circle cx="${x}" cy="${y}" r="7.5" ${S('#fff', 'stroke-width="3"')}/>` : '') +
+    `<ellipse cx="${x}" cy="${y}" rx="5.2" ry="6.4" ${N(INK)}/><circle cx="${x + 1.6}" cy="${y - 2.4}" r="1.9" ${N('#fff')}/>`;
+  return `<g class="eyes">${one(-dx)}${one(dx)}</g>`;
+}
+const blush = (dx = 28, y = 15) => `<ellipse cx="${-dx}" cy="${y}" rx="7.5" ry="4.6" ${N('#ee9f88', 'opacity=".8"')}/><ellipse cx="${dx}" cy="${y}" rx="7.5" ry="4.6" ${N('#ee9f88', 'opacity=".8"')}/>`;
+const mouthOpen = (y = 13) => `<path d="M -6.5,${y} Q 0,${y + 12} 6.5,${y} Z" ${S('#d96f5e', 'stroke-width="3"')}/>`;
+const mouthW = (y = 14) => `<path d="M -6,${y} Q -3,${y + 4.5} 0,${y} Q 3,${y + 4.5} 6,${y}" ${L(3)}/>`;
+
+function head(kind, mode) {
+  const sp = SPECIES[kind], m = mode === 'idle' ? 'sleep' : 'open';
+  switch (sp.animal) {
+    case 'monkey': return `
+      <circle cx="-50" cy="4" r="17" ${S(sp.fur)}/><circle cx="-50" cy="4" r="8.5" ${N('#e6ae86')}/>
+      <circle cx="50" cy="4" r="17" ${S(sp.fur)}/><circle cx="50" cy="4" r="8.5" ${N('#e6ae86')}/>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M 0,-14 C 8,-31 37,-30 38,-5 C 40,23 22,39 0,39 C -22,39 -40,23 -38,-5 C -37,-30 -8,-31 0,-14 Z" ${S(sp.skin, 'stroke-width="3.5"')}/>
+      <path d="M -5,-49 Q 1,-60 9,-50" ${L(3.5)}/>
+      ${eyes(m, 15, 4)}${blush(27, 17)}${mode === 'idle' ? mouthW(18) : mouthOpen(15)}`;
+    case 'owl': return `
+      <path d="M -40,-28 L -47,-63 L -16,-44 Z" ${S(sp.fur)}/><path d="M 40,-28 L 47,-63 L 16,-44 Z" ${S(sp.fur)}/>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M -30,-30 Q -20,-38 -10,-30 M 10,-30 Q 20,-38 30,-30" ${L(3, 'opacity=".55"')}/>
+      <circle cx="-18" cy="2" r="20" ${N(sp.skin)}/><circle cx="18" cy="2" r="20" ${N(sp.skin)}/>
+      ${eyes(m, 18, 2)}
+      <circle cx="-18" cy="2" r="19" ${L(3.5)}/><circle cx="18" cy="2" r="19" ${L(3.5)}/><path d="M -1,0 Q 0,-4 1,0" ${L(3.5)}/>
+      <path d="M -6,16 L 0,27 L 6,16 Q 0,12 -6,16 Z" ${S('#e2a23b', 'stroke-width="3"')}/>
+      ${blush(36, 24)}`;
+    case 'raccoon': return `
+      <g transform="rotate(-24 -33 -38)"><ellipse cx="-33" cy="-38" rx="14" ry="17" ${S(sp.fur)}/><ellipse cx="-33" cy="-36" rx="7" ry="9" ${N('#5a5960')}/></g>
+      <g transform="rotate(24 33 -38)"><ellipse cx="33" cy="-38" rx="14" ry="17" ${S(sp.fur)}/><ellipse cx="33" cy="-36" rx="7" ry="9" ${N('#5a5960')}/></g>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M -8,-48 L 0,-30 L 8,-48" ${N('#7c7e82')}/>
+      <path d="M -30,16 C -30,2 -14,6 0,10 C 14,6 30,2 30,16 C 30,34 14,42 0,42 C -14,42 -30,34 -30,16 Z" ${S(sp.skin, 'stroke-width="3.5"')}/>
+      <path d="M -44,2 C -38,-16 -10,-15 0,-5 C 10,-15 38,-16 44,2 C 36,15 10,13 0,7 C -10,13 -36,15 -44,2 Z" ${S('#4c4a50', 'stroke-width="3.5"')}/>
+      ${eyes(m, 17, 1, true)}
+      <ellipse cx="0" cy="15" rx="5.5" ry="4" ${N(INK)}/>${mode === 'idle' ? mouthW(22) : mouthOpen(21)}
+      <path d="M -54,4 C -56,-72 56,-72 54,4" ${L(7)}/><path d="M -54,4 C -56,-72 56,-72 54,4" fill="none" stroke="#c9543c" stroke-width="3"/>
+      <rect x="-62" y="-8" width="15" height="25" rx="6" ${S('#c9543c', 'stroke-width="3.5"')}/><rect x="47" y="-8" width="15" height="25" rx="6" ${S('#c9543c', 'stroke-width="3.5"')}/>
+      <path d="M -54,15 Q -48,34 -22,32" ${L(3.5)}/><circle cx="-20" cy="32" r="4" ${S(INK, 'stroke-width="2"')}/>`;
+    case 'rabbit': return `
+      <g transform="rotate(-9 -20 -62)"><ellipse cx="-20" cy="-66" rx="13" ry="33" ${S(sp.fur)}/><ellipse cx="-20" cy="-62" rx="6" ry="22" ${N('#f2b8ae')}/></g>
+      <g transform="rotate(12 22 -62)"><ellipse cx="22" cy="-66" rx="13" ry="33" ${S(sp.fur)}/><ellipse cx="22" cy="-62" rx="6" ry="22" ${N('#f2b8ae')}/></g>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      ${eyes(m, 17, 3)}${blush(28, 17)}
+      <path d="M -4.5,10 L 4.5,10 L 0,15 Z" ${S('#e48f86', 'stroke-width="2.5"')}/>${mouthW(16)}
+      <g transform="translate(40 -40) rotate(40)"><rect x="-4.5" y="-24" width="9" height="40" ${S('#e2b13f', 'stroke-width="3"')}/><rect x="-4.5" y="-30" width="9" height="7" rx="2" ${S('#e48f86', 'stroke-width="3"')}/><path d="M -4.5,16 L 0,26 L 4.5,16 Z" ${S('#f3dcb6', 'stroke-width="3"')}/></g>`;
+    case 'panda': return `
+      <circle cx="-37" cy="-36" r="15" ${S('#2f2a28')}/><circle cx="37" cy="-36" r="15" ${S('#2f2a28')}/>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <ellipse cx="-18" cy="3" rx="12" ry="15" transform="rotate(24 -18 3)" ${N('#2f2a28')}/><ellipse cx="18" cy="3" rx="12" ry="15" transform="rotate(-24 18 3)" ${N('#2f2a28')}/>
+      ${m === 'sleep' ? `<path d="M -24,4 Q -18,9 -12,4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M 12,4 Q 18,9 24,4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`
+        : `<g class="eyes"><circle cx="-17" cy="2" r="5" ${N('#fff')}/><circle cx="-16" cy="2.5" r="2.6" ${N(INK)}/><circle cx="17" cy="2" r="5" ${N('#fff')}/><circle cx="18" cy="2.5" r="2.6" ${N(INK)}/></g>`}
+      <ellipse cx="0" cy="17" rx="5.5" ry="4" ${N(INK)}/>${mode === 'idle' ? mouthW(23) : mouthOpen(22)}${blush(32, 20)}`;
+    case 'fox': return `
+      <path d="M -45,-18 L -42,-70 L -10,-45 Z" ${S(sp.fur)}/><path d="M -38,-30 L -37,-58 L -20,-44 Z" ${N('#f3dfc6')}/>
+      <path d="M 45,-18 L 42,-70 L 10,-45 Z" ${S(sp.fur)}/><path d="M 38,-30 L 37,-58 L 20,-44 Z" ${N('#f3dfc6')}/>
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M -49,6 C -32,2 -14,10 0,20 C 14,10 32,2 49,6 C 44,34 22,48 0,48 C -22,48 -44,34 -49,6 Z" ${S(sp.skin, 'stroke-width="3.5"')}/>
+      ${eyes(m, 18, 0)}<ellipse cx="0" cy="20" rx="5.5" ry="4" ${N(INK)}/>${mode === 'idle' ? mouthW(27) : mouthOpen(26)}${blush(30, 17)}`;
+    case 'penguin': return `
+      <circle cx="0" cy="0" r="50" ${S(sp.fur)}/>
+      <path d="M 0,-20 C 10,-36 40,-31 40,-4 C 41,25 21,41 0,41 C -21,41 -41,25 -40,-4 C -40,-31 -10,-36 0,-20 Z" ${S(sp.skin, 'stroke-width="3.5"')}/>
+      ${eyes(m, 16, 2)}<path d="M -8,13 L 8,13 L 0,22 Z" ${S('#e2a23b', 'stroke-width="3"')}/>${blush(28, 18)}`;
+  }
+  return '';
+}
+
+function torso(kind) {
+  const sp = SPECIES[kind];
+  const shape = 'M -47,4 L -42,-56 Q -40,-74 -22,-76 L 22,-76 Q 40,-74 42,-56 L 47,4 Z';
+  switch (sp.animal) {
+    case 'monkey': return `
+      <path d="${shape}" ${S(sp.top)}/>
+      <path d="M -16,-76 L 0,-40 L 16,-76 Z" ${S('#fbfaf6', 'stroke-width="3.5"')}/>
+      <path d="M -6,-72 L 6,-72 L 4,-64 L -4,-64 Z" ${S('#b8483a', 'stroke-width="3"')}/><path d="M -4,-64 L -7,-34 L 0,-26 L 7,-34 L 4,-64 Z" ${S('#b8483a', 'stroke-width="3"')}/>
+      <path d="M -22,-76 L -9,-48 L -17,-44 L -8,-28" ${L(3.5)}/><path d="M 22,-76 L 9,-48 L 17,-44 L 8,-28" ${L(3.5)}/>
+      <rect x="25" y="-63" width="11" height="6" rx="1.5" ${S('#fbfaf6', 'stroke-width="2.5"')}/>
+      <circle cx="0" cy="-16" r="3" ${S('#d9b25a', 'stroke-width="2"')}/>`;
+    case 'owl': return `<path d="${shape}" ${S(sp.top)}/><path d="M -16,-76 Q 0,-58 16,-76" ${L(3.5)}/><path d="M -30,-46 L -30,-20 M 30,-46 L 30,-20" ${L(3, 'opacity=".5"')}/>`;
+    case 'raccoon': return `<path d="${shape}" ${S(sp.fur)}/><path d="M -28,-48 L 28,-48 L 26,0 L -26,0 Z" ${S(sp.top, 'stroke-width="3.5"')}/><path d="M -28,-48 L -22,-76 M 28,-48 L 22,-76" ${L(4)}/>`;
+    case 'rabbit': return `<path d="${shape}" ${S(sp.top)}/><path d="M -20,-76 Q 0,-62 20,-76" ${S('#fbfaf6', 'stroke-width="3.5"')}/><path d="M -36,-40 L 36,-40 M -38,-26 L 38,-26" ${L(2.5, 'opacity=".35"')}/>`;
+    case 'panda': return `<path d="${shape}" ${S('#fbfaf6')}/><path d="M -47,4 L -42,-56 Q -40,-74 -22,-76 L -10,-76 Q -30,-40 -30,4 Z" ${S('#2f2a28', 'stroke-width="3.5"')}/><path d="M 47,4 L 42,-56 Q 40,-74 22,-76 L 10,-76 Q 30,-40 30,4 Z" ${S('#2f2a28', 'stroke-width="3.5"')}/><path d="M -10,-74 L 0,-68 L 10,-74 L 10,-62 L 0,-68 L -10,-62 Z" ${S('#c9543c', 'stroke-width="3"')}/>`;
+    case 'fox': return `<path d="${shape}" ${S(sp.fur)}/><path d="M -18,-76 Q 0,-40 18,-76" ${S(sp.skin, 'stroke-width="3.5"')}/><path d="M -30,-78 Q 0,-64 30,-78 L 28,-66 Q 0,-52 -28,-66 Z" ${S(sp.top, 'stroke-width="3.5"')}/><path d="M 14,-62 L 22,-30 L 32,-34 L 24,-62" ${S(sp.top, 'stroke-width="3.5"')}/>`;
+    case 'penguin': return `<path d="${shape}" ${S(sp.fur)}/><path d="M -28,4 Q -32,-60 0,-70 Q 32,-60 28,4 Z" ${S('#fbfaf6', 'stroke-width="3.5"')}/><path d="M -12,-72 L 0,-66 L 12,-72 L 12,-58 L 0,-66 L -12,-58 Z" ${S('#c9543c', 'stroke-width="3"')}/><circle cx="0" cy="-66" r="2.5" ${N(INK)}/>`;
+  }
+  return '';
+}
+
+function paws(kind, w = 0) {
+  const sp = SPECIES[kind];
+  const toe = DARK_PAW.includes(sp.paw) ? 'stroke="#fbfaf6"' : '';
+  const one = (x, cls) => `<g class="${cls}"><path d="M ${x - 13},-2 Q ${x - 14},-18 ${x},-18 Q ${x + 14},-18 ${x + 13},-2 Z" ${S(sp.paw, 'stroke-width="3.5"')}/><path d="M ${x - 4},-11 L ${x - 4},-6 M ${x + 4},-11 L ${x + 4},-6" ${L(2.2, toe)}/></g>`;
+  return one(-36 - w, 'pl') + one(36 + w, 'pr');
+}
+
+function bubble(state, x, y) {
+  if (state === 'on') return `<g transform="translate(${x} ${y})"><path d="M -24,-16 Q -24,-28 -12,-28 L 12,-28 Q 24,-28 24,-16 L 24,-4 Q 24,8 12,8 L -6,8 L -14,18 L -12,8 Q -24,8 -24,-4 Z" ${S('#fffdf8', 'stroke-width="3"')}/><g class="dots"><circle cx="-10" cy="-10" r="3.5" ${N(INK)}/><circle cx="0" cy="-10" r="3.5" ${N(INK)}/><circle cx="10" cy="-10" r="3.5" ${N(INK)}/></g></g>`;
+  if (state === 'wait') return `<g transform="translate(${x} ${y})"><g class="bang"><circle cx="0" cy="-10" r="17" ${S('#f0c45a', 'stroke-width="3"')}/><path d="M 0,-20 L 0,-8" ${L(4.5)}/><circle cx="0" cy="-1" r="2.6" ${N(INK)}/></g></g>`;
+  return `<g transform="translate(${x} ${y})" class="zz"><text x="0" y="0" font-family="Baloo 2, sans-serif" font-weight="800" font-size="20" fill="${INK}">z</text><text x="10" y="-6" font-family="Baloo 2, sans-serif" font-weight="800" font-size="15" fill="${INK}">z</text><text x="18" y="-12" font-family="Baloo 2, sans-serif" font-weight="800" font-size="11" fill="${INK}">z</text></g>`;
+}
+function mug(x, y, color) {
+  return `<g transform="translate(${x} ${y})"><g class="steam"><path d="M -4,-26 Q -8,-32 -4,-38 Q 0,-44 -4,-50" ${L(2.5, 'opacity=".55"')}/><path d="M 5,-26 Q 1,-32 5,-38" ${L(2.5, 'opacity=".55"')}/></g><path d="M 10,-17 Q 20,-17 20,-10 Q 20,-3 10,-4" ${L(3.5)}/><path d="M -11,-22 L 11,-22 L 9,0 L -9,0 Z" ${S(color, 'stroke-width="3.5"')}/></g>`;
+}
+function laptop(x, color) {
+  return `<g transform="translate(${x} 0)"><path d="M -36,-4 L 36,-4 L 40,2 L -40,2 Z" ${S('#c8ccc8', 'stroke-width="3.5"')}/><rect x="-32" y="-52" width="64" height="47" rx="5" ${S('#dfe2dd', 'stroke-width="3.5"')}/><circle cx="0" cy="-29" r="6" ${S(color, 'stroke-width="2.5"')}/></g>`;
+}
+function prop(kind, x) {
+  switch (SPECIES[kind].animal) {
+    case 'owl': return `<g transform="translate(${x} -8) rotate(-25)"><rect x="-3" y="-2" width="6" height="22" rx="2" ${S('#8c5a34', 'stroke-width="3"')}/><circle cx="0" cy="-14" r="13" ${S('#e8f1f2', 'stroke-width="3.5"')}/><path d="M -5,-19 Q -2,-22 2,-21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></g>`;
+    case 'raccoon': return `<g transform="translate(${x} -2)"><rect x="-22" y="-20" width="44" height="20" rx="3" ${S('#b8483a', 'stroke-width="3.5"')}/><path d="M -10,-20 L -10,-28 L 10,-28 L 10,-20" ${L(3.5)}/><path d="M -22,-11 L 22,-11" ${L(3)}/></g>`;
+    case 'rabbit': return `<g transform="translate(${x} -2) rotate(-6)"><rect x="-20" y="-8" width="40" height="8" rx="2" ${S('#fbfaf6', 'stroke-width="3"')}/><rect x="-20" y="-15" width="40" height="7" rx="2" ${S('#7c98b3', 'stroke-width="3"')}/></g>`;
+    case 'panda': return `<g transform="translate(${x} -2)"><path d="M -20,0 L -20,-26 L -6,-26 L -2,-21 L 20,-21 L 20,0 Z" ${S('#e2b13f', 'stroke-width="3.5"')}/><path d="M -20,0 L -16,-14 L 24,-14 L 20,0 Z" ${S('#efc965', 'stroke-width="3.5"')}/></g>`;
+    case 'fox': return `<g transform="translate(${x} -2)"><rect x="-20" y="-16" width="40" height="16" rx="2" ${S('#fbfaf6', 'stroke-width="3.5"')}/><path d="M -20,-16 L 0,-5 L 20,-16" ${L(3)}/><circle cx="12" cy="-14" r="5" ${S('#b8483a', 'stroke-width="2.5"')}/></g>`;
+    case 'penguin': return `<g transform="translate(${x} -2) rotate(-8)"><rect x="-17" y="-34" width="34" height="34" rx="3" ${S('#c49a6c', 'stroke-width="3.5"')}/><rect x="-12" y="-28" width="24" height="24" ${N('#fbfaf6')}/><path d="M -8,-9 L -2,-16 L 3,-12 L 9,-22" fill="none" stroke="#b8483a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="-7" y="-38" width="14" height="7" rx="2" ${S('#9fa1a3', 'stroke-width="2.5"')}/></g>`;
+  }
+  return '';
+}
+function plant(x, y, s = 1) {
+  return `<g transform="translate(${x} ${y}) scale(${s})">
+    <g class="leaf">
+      <path d="M 0,-40 C -30,-60 -46,-96 -30,-120 C -8,-104 -4,-70 0,-40 Z" ${S('#6f9a5b', 'stroke-width="3.5"')}/><path d="M -2,-48 Q -18,-80 -28,-112" ${L(2.5)}/>
+      <path d="M 0,-40 C 30,-58 50,-90 40,-118 C 14,-106 6,-72 0,-40 Z" ${S('#7aa864', 'stroke-width="3.5"')}/><path d="M 2,-48 Q 22,-78 36,-110" ${L(2.5)}/>
+      <path d="M 0,-40 C -8,-80 0,-118 14,-140 C 22,-110 16,-74 0,-40 Z" ${S('#5f8a4d', 'stroke-width="3.5"')}/><path d="M 2,-50 Q 6,-96 12,-132" ${L(2.5)}/>
+    </g>
+    <path d="M -26,-42 L 26,-42 L 20,0 L -20,0 Z" ${S('#b9704f')}/><path d="M -28,-48 L 28,-48 L 28,-38 L -28,-38 Z" ${S('#c98262')}/></g>`;
+}
+
+function station(bot, x, y, st, chief) {
+  const sp = SPECIES[bot.bot]; const w = chief ? 300 : 178; const dt = '#e3b57b', df = '#c98f56', dk = '#b47a45';
+  const mode = st.st;
+  let s = `<g transform="translate(${x} ${y})">`;
+  s += `<path d="M -40,-58 Q -40,-96 0,-96 Q 40,-96 40,-58 L 40,-20 L -40,-20 Z" ${S(chief ? '#7e3f35' : '#5d6b62', 'stroke-width="3.5"')}/>`;
+  s += `<g class="${mode === 'idle' ? 'breathe' : ''}">${torso(bot.bot)}<g transform="translate(0 -122)"><g class="${mode === 'idle' ? '' : 'bob'}">${head(bot.bot, mode)}</g></g></g>`;
+  s += `<path d="M ${-w / 2 - 6},-18 L ${w / 2 + 6},-18 L ${w / 2 + 6},0 L ${-w / 2 - 6},0 Z" ${S(dt)}/>`;
+  s += `<path d="M ${-w / 2},0 L ${w / 2},0 L ${w / 2},${chief ? 86 : 74} L ${-w / 2},${chief ? 86 : 74} Z" ${S(df)}/>`;
+  s += `<path d="M ${-w / 2 + 8},7 L ${w / 2 - 8},7" ${L(2.5, 'opacity=".3"')}/>`;
+  if (chief) {
+    s += `<rect x="${-w / 2 + 16}" y="16" width="70" height="56" rx="5" ${S(dk, 'stroke-width="3.5"')}/><rect x="${w / 2 - 86}" y="16" width="70" height="56" rx="5" ${S(dk, 'stroke-width="3.5"')}/>`;
+    s += `<circle cx="${-w / 2 + 51}" cy="44" r="4" ${S('#e2b13f', 'stroke-width="2.5"')}/><circle cx="${w / 2 - 51}" cy="44" r="4" ${S('#e2b13f', 'stroke-width="2.5"')}/>`;
+  }
+  const npY = chief ? 24 : 20, npW = chief ? 112 : 108, npH = chief ? 46 : 42;
+  const dot = mode === 'on' ? '#4f8a3c' : mode === 'wait' ? '#c98a17' : '#a3958a';
+  s += `<rect x="${-npW / 2}" y="${npY}" width="${npW}" height="${npH}" rx="9" ${S(chief ? '#efd38a' : '#fffaf0', 'stroke-width="3.5"')}/>`;
+  s += `<text x="${-npW / 2 + 12}" y="${npY + 18}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" letter-spacing=".5" fill="${INK}">${esc(bot.ma)}</text>`;
+  s += `<circle cx="${npW / 2 - 14}" cy="${npY + 13}" r="5" ${S(dot, 'stroke-width="2.5"')}/>`;
+  s += `<text x="${-npW / 2 + 12}" y="${npY + 34}" font-family="Be Vietnam Pro, sans-serif" font-weight="500" font-size="11.5" fill="#6e5b4c">${esc(bot.ten)}</text>`;
+  if (chief) {
+    s += `<g transform="translate(-112 0)"><path d="M -12,-4 L 12,-4 L 8,-12 L -8,-12 Z" ${S('#c9a24c', 'stroke-width="3"')}/><path d="M 0,-12 L 0,-46" ${L(3.5)}/><path d="M -22,-44 Q 0,-66 22,-44 Z" ${S('#3f6e4f', 'stroke-width="3.5"')}/></g>`;
+    s += `<g transform="translate(96 -2)"><path d="M -24,-4 L 20,-4 L 24,-14 L -20,-14 Z" ${S('#fbfaf6', 'stroke-width="3"')}/><path d="M -22,-14 L 22,-14 L 26,-24 L -18,-24 Z" ${S('#f3eedf', 'stroke-width="3"')}/></g>`;
+    s += mug(134, -2, '#b8483a');
+    s += paws(bot.bot, 8);
+  } else {
+    s += laptop(0, DARK_PAW.includes(sp.top) ? '#c9543c' : sp.top);
+    s += `<g class="${mode === 'on' ? 'typing' : ''}">${paws(bot.bot)}</g>`;
+    s += prop(bot.bot, -66);
+    s += mug(68, -2, ['#7c98b3', '#b8483a', '#e2b13f', '#6f9a5b'][bot.bot.length % 4]);
+  }
+  s += bubble(mode, chief ? 64 : 58, -166);
+  s += `</g>`;
+  return s;
+}
+
+const DEPTS = {
+  boss:    { name: 'Phòng Giám đốc',  wall: '#b9cec5', members: ['chief'] },
+  meet:    { name: 'Phòng họp',       wall: '#c4cfda', members: [] },
+  cafe:    { name: 'Góc cà phê',      wall: '#e3d2ac', members: [], tile: true },
+  data:    { name: 'Phòng Dữ liệu',   wall: '#cad6be', members: ['scan', 'report'] },
+  tech:    { name: 'Phòng Kỹ thuật',  wall: '#c6ccd5', members: ['tech'] },
+  content: { name: 'Phòng Nội dung',  wall: '#e3cbc2', members: ['writer'] },
+  sales:   { name: 'Phòng Khách hàng', wall: '#ddd3a9', members: ['local', 'outreach'] },
+};
+const DEPT_OF = {}; Object.entries(DEPTS).forEach(([k, d]) => d.members.forEach((m) => { DEPT_OF[m] = k; }));
+const FLOOR_BAND = 56;
+
+function signBoard(cx, y, text) {
+  const w = Math.max(150, text.length * 10.5 + 44);
+  return `<g transform="translate(${cx} ${y})"><path d="M ${-w / 2 + 18},-14 L ${-w / 2 + 18},0 M ${w / 2 - 18},-14 L ${w / 2 - 18},0" ${L(3)}/>
+    <rect x="${-w / 2}" y="0" width="${w}" height="34" rx="9" ${S('#fffaf0', 'stroke-width="3.5"')}/>
+    <text x="0" y="23" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="16" letter-spacing=".6" fill="${INK}">${esc(text.toUpperCase())}</text></g>`;
+}
+function roomShell(r, d) {
+  const wb = r.y + r.h - FLOOR_BAND;
+  let s = `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${d.wall}"/>`;
+  for (let x = r.x + 34; x < r.x + r.w; x += 68) s += `<path d="M ${x},${r.y} L ${x},${wb - 64}" stroke="#3b2a20" stroke-opacity=".05" stroke-width="3"/>`;
+  s += `<rect x="${r.x}" y="${wb - 64}" width="${r.w}" height="64" fill="#3b2a20" fill-opacity=".08"/>`;
+  for (let x = r.x + 26; x < r.x + r.w; x += 52) s += `<path d="M ${x},${wb - 56} L ${x},${wb - 10}" ${L(2.5, 'opacity=".18"')}/>`;
+  s += `<path d="M ${r.x},${wb - 64} L ${r.x + r.w},${wb - 64}" ${L(3.5)}/>`;
+  if (d.tile) {
+    s += `<rect x="${r.x}" y="${wb}" width="${r.w}" height="${FLOOR_BAND}" fill="#efe6d3"/>`;
+    for (let x = r.x, i = 0; x < r.x + r.w; x += 28, i++) for (let y = wb, j = 0; y < wb + FLOOR_BAND; y += 28, j++) if ((i + j) % 2) s += `<rect x="${x}" y="${y}" width="28" height="28" fill="#d9cdb5"/>`;
+  } else {
+    s += `<rect x="${r.x}" y="${wb}" width="${r.w}" height="${FLOOR_BAND}" fill="#d8a96f"/>`;
+    [wb + 19, wb + 38].forEach((y, j) => { s += `<path d="M ${r.x},${y} L ${r.x + r.w},${y}" stroke="#bf8f57" stroke-width="3"/>`; });
+    for (let row = 0; row < 3; row++) for (let x = r.x + 40 + (row % 2) * 70; x < r.x + r.w; x += 140) s += `<path d="M ${x},${wb + row * 19} L ${x},${wb + row * 19 + 19}" stroke="#bf8f57" stroke-width="3"/>`;
+  }
+  s += `<rect x="${r.x}" y="${wb - 10}" width="${r.w}" height="12" ${S('#f3ecdc', 'stroke-width="3.5"')}/>`;
+  return s;
+}
+function windowBox(x, y, w, h) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" ${S('#cfe4ea')}/>
+    <path d="M ${x + 18},${y + 46} q 10,-16 26,-8 q 12,-12 24,2 q 14,0 12,12 l -60,0 q -10,0 -2,-6 Z" ${S('#fbfaf6', 'stroke-width="3"')}/>
+    <path d="M ${x + w / 2},${y} L ${x + w / 2},${y + h} M ${x},${y + h / 2} L ${x + w},${y + h / 2}" ${L(4)}/>
+    <rect x="${x - 8}" y="${y + h - 2}" width="${w + 16}" height="11" rx="3" ${S('#f3ecdc', 'stroke-width="3.5"')}/>
+    <path d="M ${x - 12},${y - 8} Q ${x + 8},${y + h / 2} ${x - 2},${y + h + 4} L ${x - 20},${y + h + 4} Q ${x - 24},${y + h / 2} ${x - 12},${y - 8} Z" ${S('#d9a441', 'stroke-width="3.5"')}/>
+    <path d="M ${x + w + 12},${y - 8} Q ${x + w - 8},${y + h / 2} ${x + w + 2},${y + h + 4} L ${x + w + 20},${y + h + 4} Q ${x + w + 24},${y + h / 2} ${x + w + 12},${y - 8} Z" ${S('#d9a441', 'stroke-width="3.5"')}/>
+    <path d="M ${x - 26},${y - 10} L ${x + w + 26},${y - 10}" ${L(5)}/>`;
+}
+function clockFace(x, y, r, withIds) {
+  let s = `<g transform="translate(${x} ${y})"><circle r="${r}" ${S('#fbfaf5', 'stroke-width="5"')}/>`;
+  for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, r1 = r * .74, r2 = r * (i % 3 ? .82 : .87); s += `<path d="M ${(Math.sin(a) * r1).toFixed(1)},${(-Math.cos(a) * r1).toFixed(1)} L ${(Math.sin(a) * r2).toFixed(1)},${(-Math.cos(a) * r2).toFixed(1)}" ${L(i % 3 ? 2 : 3.5)}/>`; }
+  s += `<path ${withIds ? 'id="clk-h"' : ''} d="M 0,0 L 0,${-r * .45}" ${L(5)}/><path ${withIds ? 'id="clk-m"' : ''} d="M 0,0 L 0,${-r * .68}" ${L(3.5)}/><circle r="4" ${N(INK)}/></g>`;
+  return s;
+}
+function poster(x, y, w, h, kind) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${S(kind === 'cork' ? '#c99a63' : kind === 'blue' ? '#5f7f9f' : '#fbfaf5')}/>`;
+  if (kind === 'bars') {
+    const bw = (w - 30) / 4; [0.4, 0.62, 0.5, 0.85].forEach((v, i) => { const bh = (h - 30) * v; s += `<rect x="${x + 12 + i * (bw + 2)}" y="${y + h - 12 - bh}" width="${bw - 4}" height="${bh}" ${S(['#9cb7d2', '#8dbb6f', '#f0c45a', '#b8483a'][i], 'stroke-width="2.5"')}/>`; });
+  } else if (kind === 'map') {
+    s += `<path d="M ${x + 14},${y + 30} q 18,-14 34,-4 q 10,10 -4,22 q -18,8 -30,-6 Z M ${x + w - 54},${y + 22} q 20,-6 34,8 q 4,18 -14,26 q -20,2 -24,-14 Z M ${x + w / 2 - 10},${y + h - 26} q 14,-8 22,2 q 0,12 -14,14 q -10,-4 -8,-16 Z" ${S('#8dbb6f', 'stroke-width="2.5"')}/>`;
+    [[x + 30, y + 30], [x + w - 34, y + 34], [x + w / 2, y + h - 18]].forEach(([px, py]) => { s += `<path d="M ${px},${py} l -5,-9 a 5.5,5.5 0 1 1 10,0 Z" ${S('#b8483a', 'stroke-width="2"')}/>`; });
+  } else if (kind === 'cork') {
+    [['#f3d272', 10, 10, -4], ['#f2b8ae', w / 2 + 2, 14, 5], ['#bcd7a8', 16, h / 2 + 4, 3], ['#fbfaf6', w / 2, h / 2 + 2, -6]].forEach(([c, dx, dy, rot]) => {
+      s += `<g transform="rotate(${rot} ${x + dx + 16} ${y + dy + 14})"><rect x="${x + dx}" y="${y + dy}" width="${w / 2 - 16}" height="${h / 2 - 18}" ${S(c, 'stroke-width="2.5"')}/><circle cx="${x + dx + (w / 2 - 16) / 2}" cy="${y + dy + 4}" r="3" ${S('#b8483a', 'stroke-width="1.5"')}/></g>`;
+    });
+  } else if (kind === 'blue') {
+    s += `<path d="M ${x + 12},${y + h - 14} L ${x + 12},${y + 14} L ${x + w - 14},${y + 14} M ${x + 26},${y + 30} L ${x + w - 30},${y + 30} L ${x + w - 30},${y + h - 26} L ${x + 26},${y + h - 26} Z M ${x + w / 2},${y + 30} L ${x + w / 2},${y + h - 26}" fill="none" stroke="#e8f1f2" stroke-width="2.5" stroke-linecap="round"/>`;
+    s += `<text x="${x + w / 2}" y="${y + h - 8}" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="11" fill="#e8f1f2">&lt;/&gt;</text>`;
+  } else if (kind === 'logo') {
+    s += `<text x="${x + w / 2}" y="${y + h / 2 + 8}" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="22" fill="#46557a">TicoSystem</text>`;
+  }
+  return s;
+}
+function rackBox(x, floor) {
+  const h = 210, w = 74, y = floor - h;
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" ${S('#4f5664')}/>`;
+  for (let i = 0; i < 6; i++) { const yy = y + 14 + i * 32; s += `<rect x="${x + 9}" y="${yy}" width="${w - 18}" height="22" rx="3" ${S('#6b7382', 'stroke-width="3"')}/><circle class="led" cx="${x + 19}" cy="${yy + 11}" r="3" ${N(i % 2 ? '#8dbb6f' : '#f0c45a')}/><path d="M ${x + 30},${yy + 11} L ${x + w - 16},${yy + 11}" ${L(2.5, 'opacity=".5"')}/>`; }
+  return s;
+}
+function bookcase(x, floor, w = 96, h = 220) {
+  const y = floor - h; let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${S('#b47a45')}/>`;
+  const cols = [['#46557a', '#b8483a', '#e2b13f', '#6f9a5b', '#a8566a'], ['#6f9a5b', '#e2b13f', '#46557a', '#b8483a'], ['#a8566a', '#46557a', '#e2b13f', '#6f9a5b', '#b8483a']];
+  for (let r = 0; r < 3; r++) {
+    const sy = y + 14 + r * 66; s += `<rect x="${x + 8}" y="${sy}" width="${w - 16}" height="56" ${N('#8a5a32')}/><path d="M ${x + 8},${sy + 56} L ${x + w - 8},${sy + 56}" ${L(3.5)}/>`;
+    let bx = x + 12; cols[r].forEach((c, i) => { const bw = 11 + (i % 2) * 3, bh = 40 + ((i * 7) % 14); if (bx + bw > x + w - 10) return; s += `<rect x="${bx}" y="${sy + 56 - bh}" width="${bw}" height="${bh}" rx="2" ${S(c, 'stroke-width="2.5"')}/>`; bx += bw + 2; });
+  }
+  return s;
+}
+function meetingTable(cx, floor) {
+  let s = '';
+  [-110, 0, 110].forEach((dx) => { s += `<path d="M ${cx + dx - 34},${floor - 78} Q ${cx + dx - 34},${floor - 120} ${cx + dx},${floor - 120} Q ${cx + dx + 34},${floor - 120} ${cx + dx + 34},${floor - 78} Z" ${S('#5d6b62', 'stroke-width="3.5"')}/>`; });
+  s += `<path d="M ${cx - 180},${floor - 90} L ${cx + 180},${floor - 90} L ${cx + 180},${floor - 74} L ${cx - 180},${floor - 74} Z" ${S('#e3b57b')}/>`;
+  s += `<path d="M ${cx - 160},${floor - 74} L ${cx - 160},${floor - 14} M ${cx + 160},${floor - 74} L ${cx + 160},${floor - 14}" ${L(7)}/>`;
+  s += `<g transform="translate(${cx - 60} ${floor - 90})"><path d="M -24,0 L 20,0 L 24,-8 L -20,-8 Z" ${S('#fbfaf6', 'stroke-width="3"')}/></g>`;
+  s += mug(cx + 60, floor - 90, '#7c98b3');
+  return s;
+}
+function cafeCorner(r, floor) {
+  const x = r.x + 34; let s = '';
+  s += `<rect x="${x}" y="${r.y + 70}" width="190" height="58" rx="4" ${S('#c98f56')}/><path d="M ${x + 95},${r.y + 70} L ${x + 95},${r.y + 128}" ${L(3)}/><circle cx="${x + 84}" cy="${r.y + 112}" r="3" ${N(INK)}/><circle cx="${x + 106}" cy="${r.y + 112}" r="3" ${N(INK)}/>`;
+  s += `<rect x="${x}" y="${floor - 110}" width="190" height="96" ${S('#c98f56')}/><rect x="${x - 6}" y="${floor - 122}" width="202" height="14" rx="3" ${S('#efe6d3', 'stroke-width="3.5"')}/>`;
+  s += `<rect x="${x + 14}" y="${floor - 96}" width="74" height="70" rx="4" ${S('#b47a45', 'stroke-width="3"')}/><rect x="${x + 102}" y="${floor - 96}" width="74" height="70" rx="4" ${S('#b47a45', 'stroke-width="3"')}/>`;
+  s += `<g transform="translate(${x + 54} ${floor - 122})"><rect x="-30" y="-72" width="60" height="72" rx="6" ${S('#4f5664')}/><rect x="-20" y="-62" width="40" height="18" rx="3" ${S('#9cb7d2', 'stroke-width="2.5"')}/><path d="M -6,-40 L -6,-30 M 6,-40 L 6,-30" ${L(3.5)}/><path d="M -11,-18 L 11,-18 L 9,0 L -9,0 Z" ${S('#fbfaf6', 'stroke-width="3"')}/></g>`;
+  s += mug(x + 130, floor - 122, '#b8483a') + mug(x + 160, floor - 122, '#e2b13f');
+  const sx = r.x + r.w - 220;
+  s += `<path d="M ${sx},${floor - 14} L ${sx},${floor - 92} Q ${sx},${floor - 120} ${sx + 28},${floor - 120} L ${sx + 152},${floor - 120} Q ${sx + 180},${floor - 120} ${sx + 180},${floor - 92} L ${sx + 180},${floor - 14} Z" ${S('#7c98b3')}/>`;
+  s += `<rect x="${sx - 14}" y="${floor - 72}" width="208" height="40" rx="14" ${S('#8fa9c2')}/><rect x="${sx - 22}" y="${floor - 92}" width="30" height="72" rx="12" ${S('#7c98b3')}/><rect x="${sx + 172}" y="${floor - 92}" width="30" height="72" rx="12" ${S('#7c98b3')}/>`;
+  s += `<rect x="${sx + 30}" y="${floor - 104}" width="46" height="38" rx="10" ${S('#f0c45a', 'stroke-width="3.5"')} transform="rotate(-8 ${sx + 53} ${floor - 85})"/>`;
+  return s;
+}
+
+
+/* ======================= office map (top-down) ======================= */
+const MAP_W = 1600, MAP_H = 1000;
+const ROOMS = {
+  data: { x: 40, y: 40, w: 380, h: 390, top: true }, tech: { x: 420, y: 40, w: 380, h: 390, top: true },
+  content: { x: 800, y: 40, w: 380, h: 390, top: true }, sales: { x: 1180, y: 40, w: 380, h: 390, top: true },
+  meet: { x: 40, y: 560, w: 480, h: 400 }, boss: { x: 520, y: 560, w: 560, h: 400 }, cafe: { x: 1080, y: 560, w: 480, h: 400 },
+};
+const CORR_Y = 495;
+const doorOf = (id) => { const r = ROOMS[id], cx = id === 'boss' ? 800 : r.x + r.w / 2; return { x: cx, inY: r.top ? 400 : 592, corrY: CORR_Y }; };
+const HOME = { scan: [150, 214], report: [310, 214], tech: [560, 214], writer: [940, 214], local: [1290, 214], outreach: [1450, 214], chief: [800, 742] };
+const EXIT = { scan: -82, report: 82, tech: -82, writer: -82, local: -82, outreach: 82, chief: 0 };
+const CAFE_SEATS = [[1158, 712], [1262, 712], [1158, 868], [1262, 868], [1352, 926], [1432, 926]];
+const GUEST = [[742, 892], [858, 892]];
+const FLOORS = { data: 'url(#f-wood)', tech: 'url(#f-tech)', content: 'url(#f-rose)', sales: 'url(#f-sand)', meet: 'url(#f-blue)', boss: 'url(#f-dark)', cafe: 'url(#f-check)' };
+
+const mapDefs = () => `<defs>
+  <pattern id="f-wood" width="140" height="56" patternUnits="userSpaceOnUse"><rect width="140" height="56" fill="#dcb27a"/><path d="M0 28H140M0 56H140M40 0V28M110 28V56" stroke="#c49558" stroke-width="2.5"/></pattern>
+  <pattern id="f-dark" width="140" height="56" patternUnits="userSpaceOnUse"><rect width="140" height="56" fill="#c8915a"/><path d="M0 28H140M0 56H140M40 0V28M110 28V56" stroke="#ad7a45" stroke-width="2.5"/></pattern>
+  <pattern id="f-tech" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#b8c0ca"/><circle cx="6" cy="6" r="2" fill="#a2abb7"/><circle cx="18" cy="18" r="2" fill="#a2abb7"/></pattern>
+  <pattern id="f-rose" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#dcbdb1"/><path d="M0 12H24M12 0V24" stroke="#d0ada0" stroke-width="2"/></pattern>
+  <pattern id="f-sand" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#d7c890"/><circle cx="12" cy="12" r="2.2" fill="#c7b77c"/></pattern>
+  <pattern id="f-blue" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#b4c3cf"/><path d="M0 24L24 0" stroke="#a6b6c3" stroke-width="2"/></pattern>
+  <pattern id="f-check" width="56" height="56" patternUnits="userSpaceOnUse"><rect width="56" height="56" fill="#efe6d3"/><rect width="28" height="28" fill="#dacfb7"/><rect x="28" y="28" width="28" height="28" fill="#dacfb7"/></pattern>
+  <pattern id="f-hall" width="48" height="48" patternUnits="userSpaceOnUse"><rect width="48" height="48" fill="#ece4d2"/><path d="M0 0H48V48" fill="none" stroke="#d8ccb6" stroke-width="2"/></pattern>
+</defs>`;
+
+const T = (fill, w = 3.5, extra = '') => `fill="${fill}" stroke="${INK}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
+function deskT(cx, cy, w = 130, h = 56, mugc = '#7c98b3') {
+  return `<rect x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}" rx="7" ${T('#e3b57b')}/>
+  <path d="M ${cx - w / 2 + 6},${cy + h / 2 - 8} L ${cx + w / 2 - 6},${cy + h / 2 - 8}" ${L(2.5, 'opacity=".3"')}/>
+  <rect x="${cx - 21}" y="${cy - 14}" width="42" height="26" rx="4" ${T('#dfe2dd', 3)}/><rect x="${cx - 21}" y="${cy + 10}" width="42" height="6" rx="2" ${T('#4f5664', 2.5)}/>
+  <circle cx="${cx - w / 2 + 20}" cy="${cy - 4}" r="8.5" ${T(mugc, 3)}/><circle cx="${cx - w / 2 + 20}" cy="${cy - 4}" r="4.5" fill="#7a4a2c"/>
+  <g transform="rotate(8 ${cx + w / 2 - 26} ${cy})"><rect x="${cx + w / 2 - 40}" y="${cy - 14}" width="26" height="30" rx="2" ${T('#fbfaf6', 2.5)}/><path d="M ${cx + w / 2 - 34},${cy - 6} h 14 M ${cx + w / 2 - 34},${cy + 1} h 14 M ${cx + w / 2 - 34},${cy + 8} h 9" ${L(2, 'opacity=".45"')}/></g>`;
+}
+const chairT = (x, y, c = '#5d6b62') => `<circle cx="${x}" cy="${y - 6}" r="23" ${T(c)}/><circle cx="${x}" cy="${y - 6}" r="14" fill="#fff" opacity=".12"/>`;
+function plantT(x, y, s = 1) {
+  let g = `<g transform="translate(${x} ${y}) scale(${s})"><g class="leaf">`;
+  for (let i = 0; i < 7; i++) { const a = i * 360 / 7; g += `<ellipse cx="0" cy="-17" rx="9" ry="18" transform="rotate(${a})" ${T(i % 2 ? '#7aa864' : '#5f8a4d', 3)}/>`; }
+  return g + `</g><circle r="13" ${T('#b9704f', 3)}/><circle r="7" fill="#7a4a2c"/></g>`;
+}
+function rackT(x, y, w, h) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" ${T('#4f5664')}/>`;
+  for (let i = 0; i < Math.floor((h - 16) / 22); i++) { const yy = y + 10 + i * 22; s += `<rect x="${x + 8}" y="${yy}" width="${w - 16}" height="15" rx="3" ${T('#6b7382', 2.5)}/><circle class="led" cx="${x + 16}" cy="${yy + 7.5}" r="2.6" fill="${i % 2 ? '#8dbb6f' : '#f0c45a'}" style="animation-delay:${(i * .37) % 1.3}s"/>`; }
+  return s;
+}
+function shelfT(x, y, w, h) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${T('#b47a45')}/>`;
+  const cs = ['#46557a', '#b8483a', '#e2b13f', '#6f9a5b', '#a8566a'];
+  if (h > w) { for (let yy = y + 8, i = 0; yy < y + h - 14; yy += 14, i++) s += `<rect x="${x + 6}" y="${yy}" width="${w - 12 - (i % 3) * 4}" height="10" rx="2" ${T(cs[i % 5], 2)}/>`; }
+  else { for (let xx = x + 8, i = 0; xx < x + w - 14; xx += 14, i++) s += `<rect x="${xx}" y="${y + 6}" width="10" height="${h - 12 - (i % 3) * 4}" rx="2" ${T(cs[i % 5], 2)}/>`; }
+  return s;
+}
+function sofaT(x, y, w, h) {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" ${T('#7c98b3')}/><rect x="${x + 8}" y="${y + h - 22}" width="${w - 16}" height="16" rx="8" ${T('#6a86a2', 3)}/>
+  <rect x="${x + 14}" y="${y + 8}" width="${w / 2 - 20}" height="${h - 36}" rx="10" ${T('#8fa9c2', 3)}/><rect x="${x + w / 2 + 6}" y="${y + 8}" width="${w / 2 - 20}" height="${h - 36}" rx="10" ${T('#8fa9c2', 3)}/>`;
+}
+function roundTableT(x, y, r) { return `<circle cx="${x}" cy="${y}" r="${r}" ${T('#e3b57b')}/><circle cx="${x - 8}" cy="${y - 6}" r="7" ${T('#fbfaf6', 2.5)}/><circle cx="${x - 8}" cy="${y - 6}" r="3.5" fill="#7a4a2c"/>`; }
+const stoolT = (x, y) => `<circle cx="${x}" cy="${y - 6}" r="17" ${T('#b8664f')}/>`;
+
+function drawMap(D) {
+  let s = mapDefs();
+  s += `<rect x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="#9fb59a"/>`;
+  for (let i = 0; i < 40; i++) { const x = (i * 263) % MAP_W, y = (i * 151) % MAP_H; s += `<circle cx="${x}" cy="${y}" r="${3 + (i % 3)}" fill="#8fa98b"/>`; }
+  s += `<rect x="26" y="26" width="${MAP_W - 52}" height="${MAP_H - 52}" rx="10" fill="#d9cdb7"/>`;
+  s += `<rect x="40" y="430" width="1520" height="130" fill="url(#f-hall)"/>`;
+  s += `<rect x="120" y="470" width="1360" height="50" rx="25" ${T('#c76b4f', 3, 'opacity=".9"')}/><rect x="134" y="480" width="1332" height="30" rx="15" fill="none" stroke="#f0d3a8" stroke-width="3" stroke-dasharray="12 9"/>`;
+  Object.entries(ROOMS).forEach(([id, r]) => { s += `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${FLOORS[id]}"/>`; });
+  // furniture
+  const deskOf = (id) => { const [x, y] = HOME[id]; return [x, y + 44]; };
+  ['scan', 'report', 'tech', 'writer', 'local', 'outreach'].forEach((id, i) => { const [x, y] = HOME[id]; s += chairT(x, y); const [dx, dy] = deskOf(id); s += deskT(dx, dy, 130, 56, ['#7c98b3', '#b8483a', '#e2b13f', '#6f9a5b'][i % 4]); });
+  // data room
+  s += `<rect x="60" y="56" width="68" height="44" rx="4" ${T('#9aa1a8')}/><path d="M 66,78 h 56" ${L(2.5)}/><circle cx="94" cy="68" r="2.5" fill="${INK}"/><circle cx="94" cy="90" r="2.5" fill="${INK}"/>`;
+  s += plantT(386, 80, .9) + plantT(80, 392, .8);
+  s += `<rect x="190" y="44" width="100" height="12" rx="3" ${T('#fbfaf5', 3)}/>`;
+  // tech room
+  s += rackT(680, 64, 92, 170) + `<path d="M 680,180 C 640,200 620,240 600,258" fill="none" stroke="#4f5664" stroke-width="4" stroke-dasharray="7 6" stroke-linecap="round"/>`;
+  s += plantT(452, 392, .8) + plantT(770, 392, .8);
+  // content room
+  s += shelfT(1124, 70, 40, 280) + shelfT(830, 54, 150, 30) + plantT(1080, 392, .85);
+  s += `<rect x="1010" y="300" width="90" height="62" rx="12" ${T('#a8566a')}/><rect x="1022" y="310" width="66" height="36" rx="8" fill="#bf7286"/>`;
+  // sales room
+  s += `<rect x="1210" y="58" width="60" height="40" rx="4" ${T('#9aa1a8')}/><rect x="1280" y="58" width="60" height="40" rx="4" ${T('#9aa1a8')}/><path d="M 1216,78 h 48 M 1286,78 h 48" ${L(2.5)}/>`;
+  s += plantT(1530, 80, .85) + plantT(1210, 392, .8) + `<rect x="1350" y="44" width="110" height="12" rx="3" ${T('#fbfaf5', 3)}/>`;
+  // meeting room
+  s += `<rect x="110" y="566" width="340" height="12" rx="3" ${T('#fbfaf5', 3)}/>`;
+  [[180, 690], [280, 682], [380, 690], [180, 852], [280, 860], [380, 852]].forEach(([x, y]) => { s += `<circle cx="${x}" cy="${y}" r="21" ${T('#5d6b62')}/>`; });
+  s += `<ellipse cx="280" cy="770" rx="170" ry="70" ${T('#e3b57b')}/><ellipse cx="280" cy="770" rx="150" ry="54" fill="none" stroke="#c98f56" stroke-width="2.5"/>`;
+  s += `<g transform="rotate(-6 230 760)"><rect x="210" y="745" width="40" height="30" rx="2" ${T('#fbfaf6', 2.5)}/></g><circle cx="330" cy="772" r="8.5" ${T('#7c98b3', 3)}/><circle cx="330" cy="772" r="4.5" fill="#7a4a2c"/>`;
+  s += plantT(486, 930, .8) + plantT(74, 930, .8);
+  // boss room
+  s += `<ellipse cx="800" cy="812" rx="230" ry="120" ${T('#b8664f')}/><ellipse cx="800" cy="812" rx="205" ry="100" fill="none" stroke="#f0d3a8" stroke-width="3" stroke-dasharray="12 9"/>`;
+  s += chairT(800, 742, '#7e3f35');
+  s += deskT(800, 800, 250, 74, '#b8483a') + `<g transform="translate(888 792)"><circle r="12" ${T('#3f6e4f', 3)}/><circle r="4" fill="#f0c45a"/></g>`;
+  GUEST.forEach(([x, y]) => { s += `<rect x="${x - 22}" y="${y - 26}" width="44" height="40" rx="12" ${T('#7c98b3')}/>`; });
+  s += shelfT(536, 590, 36, 300) + plantT(1050, 594, .9) + plantT(1050, 930, .9) + plantT(560, 930, .8);
+  // cafe
+  s += `<rect x="1500" y="590" width="50" height="300" rx="6" ${T('#c98f56')}/><rect x="1494" y="584" width="62" height="312" rx="6" fill="none" stroke="${INK}" stroke-width="3.5"/>`;
+  s += `<rect x="1506" y="620" width="38" height="46" rx="5" ${T('#4f5664', 3)}/><circle cx="1525" cy="652" r="6" ${T('#fbfaf6', 2.5)}/>`;
+  [700, 730, 760].forEach((y, i) => { s += `<circle cx="1525" cy="${y}" r="8" ${T(['#b8483a', '#e2b13f', '#7c98b3'][i], 3)}/>`; });
+  s += `<rect x="1508" y="800" width="34" height="52" rx="6" ${T('#cfe4ea', 3)}/><circle cx="1525" cy="814" r="9" ${T('#9cc3d3', 2.5)}/>`;
+  [[1210, 712], [1210, 868]].forEach(([x, y]) => { s += stoolT(x - 52, y) + stoolT(x + 52, y) + roundTableT(x, y - 4, 34); });
+  s += sofaT(1312, 900, 160, 52) + plantT(1110, 592, .85) + plantT(1110, 930, .8) + plantT(1470, 610, .7);
+  // walls
+  const wall = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" ${T('#efe6d6')}/>`;
+  s += wall(26, 26, MAP_W - 52, 14) + wall(26, MAP_H - 40, MAP_W - 52, 14) + wall(26, 26, 14, MAP_H - 52) + wall(MAP_W - 40, 26, 14, MAP_H - 52);
+  const gapsTop = [230, 610, 990, 1370], gapsBot = [280, 800, 1320];
+  const run = (y, gaps) => { let x0 = 40; gaps.forEach((g) => { s += wall(x0, y, g - 48 - x0, 12); x0 = g + 48; }); s += wall(x0, y, MAP_W - 40 - x0, 12); };
+  run(424, gapsTop); run(554, gapsBot);
+  [414, 794, 1174].forEach((x) => { s += wall(x, 40, 12, 384); });
+  [514, 1074].forEach((x) => { s += wall(x, 566, 12, MAP_H - 606); });
+  gapsTop.forEach((g) => { s += `<rect x="${g - 34}" y="404" width="68" height="16" rx="6" ${T('#b8664f', 3)}/>`; });
+  gapsBot.forEach((g) => { s += `<rect x="${g - 34}" y="570" width="68" height="16" rx="6" ${T('#b8664f', 3)}/>`; });
+  // labels + click areas
+  Object.entries(ROOMS).forEach(([id, r]) => {
+    const name = DEPTS[id].name, w = name.length * 9.2 + 40;
+    s += `<rect class="room-hit" data-room="${id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="transparent"/>`;
+    const lx = r.top ? r.x + 14 : r.x + 14, ly = r.top ? r.y + r.h - 50 : r.y + r.h - 46;
+    s += `<g data-room="${id}" class="room-hit" style="cursor:pointer"><rect x="${lx}" y="${ly}" width="${w}" height="30" rx="15" ${T('#fffaf0', 3)}/><text x="${lx + 14}" y="${ly + 20}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="14" fill="${INK}">${esc(name)} →</text></g>`;
+  });
+  s += `<g id="actors"></g><g id="fx"></g>`;
+  return s;
+}
+
+/* ---------- actors ---------- */
+function miniTorso(id) {
+  const sp = SPECIES[id];
+  const base = 'M -18,-2 Q -19,-31 0,-33 Q 19,-31 18,-2 Z';
+  switch (sp.animal) {
+    case 'monkey': return `<path d="${base}" ${T(sp.top, 3)}/><path d="M -6,-32 L 0,-18 L 6,-32 Z" ${T('#fbfaf6', 2.5)}/><path d="M -2,-29 L 2,-29 L 3,-14 L 0,-10 L -3,-14 Z" ${T('#b8483a', 2)}/>`;
+    case 'panda': return `<path d="${base}" ${T('#fbfaf6', 3)}/><path d="M -18,-2 Q -19,-31 -6,-33 L -10,-2 Z M 18,-2 Q 19,-31 6,-33 L 10,-2 Z" ${T('#2f2a28', 2.5)}/>`;
+    case 'penguin': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -10,-2 Q -12,-26 0,-29 Q 12,-26 10,-2 Z" fill="#fbfaf6"/><path d="M -5,-30 L 0,-27 L 5,-30 L 5,-24 L 0,-27 L -5,-24 Z" ${T('#c9543c', 2)}/>`;
+    case 'raccoon': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -11,-22 L 11,-22 L 10,-2 L -10,-2 Z" ${T(sp.top, 2.5)}/>`;
+    case 'fox': return `<path d="${base}" ${T(sp.fur, 3)}/><path d="M -13,-32 Q 0,-26 13,-32 L 12,-26 Q 0,-20 -12,-26 Z" ${T(sp.top, 2.5)}/>`;
+    default: return `<path d="${base}" ${T(sp.top, 3)}/>`;
+  }
+}
+function spriteSVG(id, mode) {
+  const sp = SPECIES[id];
+  return `<g class="flip">
+    <ellipse cx="0" cy="2" rx="21" ry="7" fill="${INK}" opacity=".18"/>
+    <g class="feet"><ellipse class="fl" cx="-8" cy="-2" rx="7" ry="5" ${T(DARK_PAW.includes(sp.paw) ? sp.paw : sp.fur === '#f5f0e6' ? '#f5f0e6' : sp.paw, 2.5)}/><ellipse class="fr" cx="8" cy="-2" rx="7" ry="5" ${T(DARK_PAW.includes(sp.paw) ? sp.paw : sp.fur === '#f5f0e6' ? '#f5f0e6' : sp.paw, 2.5)}/></g>
+    <g class="bodyg">
+      <ellipse cx="-19" cy="-16" rx="5.5" ry="9" ${T(sp.paw, 2.5)}/><ellipse cx="19" cy="-16" rx="5.5" ry="9" ${T(sp.paw, 2.5)}/>
+      ${miniTorso(id)}
+      <g transform="translate(0 -52) scale(.44)"><g class="headg">${head(id, mode)}</g></g>
+    </g></g>`;
+}
+
+/* ---------- app ---------- */
+const form = document.getElementById('lock-form');
+document.getElementById('lock-ava').innerHTML = head('chief', 'on');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err'); err.textContent = '';
+  try { start(await unlock(document.getElementById('pw').value)); } catch (x) { console.error(x); err.textContent = 'Sai mật khẩu rồi. Thử lại nhé.'; }
+});
+function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+const NS = 'http://www.w3.org/2000/svg';
+const nf = new Intl.NumberFormat('vi-VN');
+const nf1 = new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pct = new Intl.NumberFormat('vi-VN', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function vnNow() { return new Date(Date.now() + (new Date().getTimezoneOffset() + 420) * 60000); }
+function isoDate(d) { const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+const hhmm = () => { const n = vnNow(); return String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0'); };
+function avatar(id, mode, cls) { const s = document.createElementNS(NS, 'svg'); s.setAttribute('viewBox', '-75 -80 150 150'); s.setAttribute('aria-hidden', 'true'); if (cls) s.setAttribute('class', cls); s.innerHTML = head(id, mode); return s; }
+
+function start(D) {
+  document.getElementById('lock').hidden = true;
+  document.getElementById('app').hidden = false;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) document.getElementById('app').classList.add('anim');
+  const now = vnNow(), today = isoDate(now);
+  const dayN = Math.min(15, Math.max(1, Math.floor((new Date(today + 'T00:00:00') - new Date(D.meta.start + 'T00:00:00')) / 864e5) + 1));
+  D._day = dayN;
+  const colors = D.meta.colors;
+  const BOT = Object.fromEntries(D.bots.map((b) => [b.bot, b]));
+  const deptName = (id) => DEPTS[DEPT_OF[id]].name;
+
+  // ---- status from real data
+  const state = {};
+  D.bots.forEach((b) => {
+    const rows = D.plan.filter((r) => r.bot === b.bot);
+    const todays = rows.filter((r) => r.date === today && r.trang_thai !== 'Xong');
+    const waiting = todays.filter((r) => r.trang_thai === 'Chờ bạn');
+    const recent = D.activity.filter((r) => r.bot === b.bot && (Date.now() - new Date(r.luc).getTime()) < 2 * 3600e3);
+    const next = rows.filter((r) => r.date > today && r.trang_thai !== 'Xong').sort((x, y) => x.ngay - y.ngay)[0];
+    let st = 'idle', label = 'Đang nghỉ', task = next ? `Tiếp theo, ngày ${next.ngay}: ${next.viec}` : 'Chưa có việc trong lịch.';
+    if (todays.length && waiting.length === todays.length) { st = 'wait'; label = 'Chờ bạn'; task = waiting[0].viec; }
+    else if (todays.length) { st = 'on'; label = 'Đang làm'; task = todays.find((r) => r.trang_thai !== 'Chờ bạn').viec; }
+    else if (recent.length) { st = 'on'; label = 'Vừa xong'; task = recent[recent.length - 1].viec; }
+    state[b.bot] = { st, label, task, rows };
+  });
+
+  // ---- hud
+  document.getElementById('brand-ava').innerHTML = head('chief', 'on');
+  document.getElementById('site-name').textContent = D.meta.site + ' · TicoSystem';
+  document.getElementById('chip-day').textContent = dayN;
+  const sorted = [...D.activity].sort((a, b) => String(b.luc).localeCompare(String(a.luc)));
+  document.getElementById('chip-live').textContent = 'Cập nhật ' + (sorted[0] ? sorted[0].gio : '');
+  const clock = document.getElementById('chip-clock');
+  const tick = () => {
+    const n = vnNow(); clock.textContent = hhmm() + ' giờ VN';
+    const h = document.getElementById('clk-h'), m = document.getElementById('clk-m');
+    if (h) h.setAttribute('transform', `rotate(${(n.getHours() % 12) * 30 + n.getMinutes() * .5})`);
+    if (m) m.setAttribute('transform', `rotate(${n.getMinutes() * 6 + n.getSeconds() * .1})`);
+  };
+  tick(); setInterval(tick, 15000);
+
+  // ---- roster
+  const roster = document.getElementById('roster');
+  D.bots.forEach((b) => {
+    const s = state[b.bot];
+    const btn = el('button', 'mate'); btn.type = 'button'; btn.dataset.bot = b.bot; btn.setAttribute('aria-pressed', 'false');
+    const txt = el('span'); const small = el('small'); small.append(el('i', s.st === 'on' ? 'on' : s.st === 'wait' ? 'wait' : ''), document.createTextNode(s.label));
+    txt.append(el('b', null, b.ma), small);
+    btn.append(avatar(b.bot, s.st === 'idle' ? 'idle' : 'on'), txt);
+    btn.addEventListener('click', () => { if (location.hash) location.hash = ''; select(b.bot, true); });
+    roster.append(btn);
+  });
+
+  // ---- map
+  const svg = document.getElementById('map');
+  svg.innerHTML = drawMap(D);
+  const actorsG = svg.querySelector('#actors'), fxG = svg.querySelector('#fx');
+  const actors = {};
+  D.bots.forEach((b) => {
+    const s = state[b.bot];
+    const g = document.createElementNS(NS, 'g'); g.setAttribute('data-bot', b.bot); g.setAttribute('class', 'actor sitting');
+    g.innerHTML = spriteSVG(b.bot, s.st === 'idle' ? 'idle' : 'on');
+    const st = document.createElementNS(NS, 'g'); st.setAttribute('class', 'status');
+    st.innerHTML = `<g transform="translate(22 -78) scale(.5)">${bubble(s.st, 0, 0)}</g>`;
+    g.append(st);
+    const tag = document.createElementNS(NS, 'g');
+    const tw = b.ma.length * 8 + 16;
+    tag.innerHTML = `<rect x="${-tw / 2}" y="-118" width="${tw}" height="20" rx="10" ${T('#fffaf0', 2.5)}/><text x="0" y="-103.5" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="12" fill="${colors[b.bot]}">${esc(b.ma)}</text>`;
+    g.append(tag);
+    actorsG.append(g);
+    const [x, y] = HOME[b.bot];
+    actors[b.bot] = { id: b.bot, el: g, statusEl: st, x, y, path: [], dir: 1, busy: false, onArrive: null, room: DEPT_OF[b.bot], t: Math.random() * 10 };
+  });
+  const feet = (a, on) => { a.el.classList.toggle('sitting', !on); a.el.classList.toggle('walking', on); a.el.querySelector('.feet').style.display = on ? '' : 'none'; a.statusEl.style.display = on ? 'none' : ''; };
+  Object.values(actors).forEach((a) => feet(a, false));
+
+  // ---- camera
+  const game = document.getElementById('game');
+  const cam = { cx: MAP_W / 2, cy: MAP_H / 2, z: 1 }, camT = { ...cam };
+  let follow = null;
+  const view = () => { const vw = game.clientWidth || 800, vh = game.clientHeight || 500; const base = Math.min(vw / MAP_W, vh / MAP_H); return { vw, vh, base }; };
+  const clampCam = (c) => {
+    const { vw, vh, base } = view(); const sc = base * c.z, w = vw / sc, h = vh / sc;
+    c.z = Math.max(1, Math.min(5, c.z));
+    c.cx = w >= MAP_W ? MAP_W / 2 : Math.max(w / 2, Math.min(MAP_W - w / 2, c.cx));
+    c.cy = h >= MAP_H ? MAP_H / 2 : Math.max(h / 2, Math.min(MAP_H - h / 2, c.cy));
+  };
+  const applyCam = () => { const { vw, vh, base } = view(); const sc = base * cam.z, w = vw / sc, h = vh / sc; svg.setAttribute('viewBox', `${(cam.cx - w / 2).toFixed(2)} ${(cam.cy - h / 2).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`); };
+  const toMap = (px, py) => { const r = svg.getBoundingClientRect(); const { vw, vh, base } = view(); const sc = base * cam.z; return [cam.cx + (px - r.left - vw / 2) / sc, cam.cy + (py - r.top - vh / 2) / sc]; };
+  const zoomAt = (factor, px, py) => {
+    const [mx, my] = toMap(px, py); const z2 = Math.max(1, Math.min(5, camT.z * factor));
+    const { vw, vh, base } = view(); const r = svg.getBoundingClientRect();
+    camT.z = z2; camT.cx = mx - (px - r.left - vw / 2) / (base * z2); camT.cy = my - (py - r.top - vh / 2) / (base * z2); clampCam(camT);
+  };
+  const setFollow = (id) => {
+    follow = id;
+    document.getElementById('follow').hidden = !id;
+    if (id) { document.getElementById('follow-name').textContent = 'Đang theo dõi ' + BOT[id].ma + ' · ' + SPECIES[id].label; camT.z = Math.max(camT.z, 2.4); }
+    roster.querySelectorAll('.mate').forEach((m) => m.setAttribute('aria-pressed', String(m.dataset.bot === id)));
+  };
+  document.getElementById('unfollow').addEventListener('click', () => { select(null); });
+  document.getElementById('zin').addEventListener('click', () => { const r = svg.getBoundingClientRect(); zoomAt(1.4, r.left + r.width / 2, r.top + r.height / 2); });
+  document.getElementById('zout').addEventListener('click', () => { const r = svg.getBoundingClientRect(); zoomAt(1 / 1.4, r.left + r.width / 2, r.top + r.height / 2); });
+  document.getElementById('zfit').addEventListener('click', () => { setFollow(null); camT.z = 1; camT.cx = MAP_W / 2; camT.cy = MAP_H / 2; });
+  svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+  const ptrs = new Map(); let moved = 0, pinch = null, downTarget = null;
+  svg.addEventListener('pointerdown', (e) => {
+    svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; downTarget = e.target;
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) }; }
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return;
+    const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2 && pinch) {
+      const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      zoomAt(d / pinch.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); Object.assign(cam, camT); pinch.d = d; moved += 10; return;
+    }
+    const dx = e.clientX - prev[0], dy = e.clientY - prev[1]; moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > 6) {
+      svg.classList.add('dragging'); if (follow) setFollow(null);
+      const { base } = view(); camT.cx -= dx / (base * camT.z); camT.cy -= dy / (base * camT.z); clampCam(camT); Object.assign(cam, camT);
+    }
+  });
+  const up = (e) => {
+    ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; svg.classList.remove('dragging');
+    if (moved <= 6 && ptrs.size === 0 && downTarget) {
+      const b = downTarget.closest && downTarget.closest('[data-bot]');
+      const r = downTarget.closest && downTarget.closest('[data-room]');
+      if (b) select(b.getAttribute('data-bot'), true); else if (r) location.hash = 'phong-' + r.getAttribute('data-room');
+    }
+    downTarget = null;
+  };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  new ResizeObserver(() => { clampCam(camT); clampCam(cam); applyCam(); }).observe(game);
+
+  // ---- bubbles & feed
+  const simFeed = [];
+  const say = (id, text, ms = 2800) => {
+    const a = actors[id]; const w = Math.min(260, text.length * 7.4 + 26);
+    const g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'say');
+    g.innerHTML = `<g class="pop"><path d="M ${-w / 2},-162 Q ${-w / 2},-174 ${-w / 2 + 12},-174 L ${w / 2 - 12},-174 Q ${w / 2},-174 ${w / 2},-162 L ${w / 2},-138 Q ${w / 2},-126 ${w / 2 - 12},-126 L 8,-126 L -2,-114 L -4,-126 L ${-w / 2 + 12},-126 Q ${-w / 2},-126 ${-w / 2},-138 Z" ${T('#fffdf8', 3)}/><text x="0" y="-145" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-weight="600" font-size="13" fill="${INK}">${esc(text)}</text></g>`;
+    g.dataset.for = id; fxG.append(g); a.bubble = g;
+    setTimeout(() => { g.remove(); if (a.bubble === g) a.bubble = null; }, ms);
+  };
+  const logSim = (from, to, text) => { simFeed.unshift({ t: hhmm(), from, to, text }); if (simFeed.length > 30) simFeed.pop(); if (!selected) renderSide(); };
+
+  // ---- routes
+  const roomTop = (id) => !!ROOMS[DEPT_OF[id] || id].top;
+  function exitPts(id) {
+    if (id === 'chief') return [];
+    const [x, y] = HOME[id]; return [[x + EXIT[id], y], [x + EXIT[id], 330]];
+  }
+  function route(fromId, toRoom, dest) {
+    const a = actors[fromId]; const pts = [];
+    const homeRoom = DEPT_OF[fromId];
+    const atHome = Math.abs(a.x - HOME[fromId][0]) < 1 && Math.abs(a.y - HOME[fromId][1]) < 1;
+    if (atHome) pts.push(...exitPts(fromId));
+    const curRoom = atHome ? homeRoom : a.room;
+    if (curRoom !== toRoom) {
+      const A = doorOf(curRoom), B = doorOf(toRoom);
+      pts.push([A.x, A.inY], [A.x, A.corrY], [B.x, B.corrY], [B.x, B.inY]);
+    }
+    pts.push(dest);
+    return pts;
+  }
+  function goHome(id) {
+    const a = actors[id]; const pts = [];
+    const homeRoom = DEPT_OF[id];
+    if (a.room !== homeRoom) { const A = doorOf(a.room), B = doorOf(homeRoom); pts.push([A.x, A.inY], [A.x, A.corrY], [B.x, B.corrY], [B.x, B.inY]); }
+    if (id !== 'chief') { const [x, y] = HOME[id]; pts.push([x + EXIT[id], 330], [x + EXIT[id], y]); }
+    pts.push(HOME[id]);
+    return walk(id, pts, homeRoom);
+  }
+  function walk(id, pts, endRoom) {
+    const a = actors[id]; a.path = pts.slice(); feet(a, true); a.endRoom = endRoom;
+    return new Promise((res) => { a.onArrive = () => { a.room = endRoom; res(); }; });
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const visitPoint = (target, i) => target === 'chief' ? GUEST[i % 2] : [HOME[target][0] + (i % 2 ? 46 : -46), 336];
+
+  // ---- scripted interactions (from the real plan + numbers)
+  const g = D.gsc;
+  const quick = D.queries.filter((q) => q.loai === 'Dịch vụ' && q.vi_tri <= 20).length;
+  const EVENTS = [
+    { from: 'scan', to: 'writer', say: 'Gửi bạn 20 từ khóa nè!', reply: 'Cảm ơn, mình đưa vào bài ngay' },
+    { from: 'report', to: 'chief', say: `Báo cáo: ${nf.format(g.luot_hien_thi)} hiển thị, ${g.luot_nhap} nhấp`, reply: 'Theo dõi mỗi sáng nhé!' },
+    { from: 'tech', to: 'chief', say: 'Sửa sitemap cần quyền vào web ạ', reply: 'Để mình xin quyền chủ web' },
+    { from: 'writer', to: 'chief', say: 'Xong nháp 5 bài rồi ạ', reply: 'Tuyệt, chờ điền chỗ ⚠️ nhé' },
+    { from: 'chief', to: 'tech', say: 'Ưu tiên sitemap và hreflang', reply: 'Rõ, sếp!' },
+    { from: 'local', to: 'outreach', say: 'Ngày 3 mình lập Google Business', reply: 'Ngày 10 mình lo LinkedIn' },
+    { from: 'scan', to: 'report', say: `${quick} từ khóa đang ở top 20`, reply: 'Mình theo dõi thứ hạng nhé' },
+    { from: 'tech', to: 'writer', say: 'Nhớ thêm schema FAQ cho bài', reply: 'Ok, mình ghi chú lại' },
+    { from: 'chief', to: 'local', say: 'Chuẩn bị hồ sơ Clutch nhé', reply: 'Dạ, ngày 8 xong ạ' },
+    { from: 'outreach', to: 'cafe', say: 'Đi pha ly cà phê đã ☕' },
+    { from: 'local', to: 'cafe', say: 'Nghỉ tay chút ☕' },
+    { from: 'report', to: 'cafe', say: 'Cà phê rồi đọc số tiếp' },
+  ];
+  const cafeTaken = new Set();
+  async function runEvent(ev) {
+    const A = actors[ev.from]; A.busy = true;
+    try {
+      if (ev.to === 'cafe') {
+        const seat = CAFE_SEATS.findIndex((_, i) => !cafeTaken.has(i)); if (seat < 0) return; cafeTaken.add(seat);
+        await walk(ev.from, route(ev.from, 'cafe', CAFE_SEATS[seat]), 'cafe');
+        feet(A, false); A.statusEl.style.display = 'none';
+        say(ev.from, ev.say, 3200); logSim(ev.from, null, ev.say);
+        await sleep(6500); cafeTaken.delete(seat);
+      } else {
+        const B = actors[ev.to]; B.busy = true;
+        await walk(ev.from, route(ev.from, DEPT_OF[ev.to], visitPoint(ev.to, Math.random() * 2 | 0)), DEPT_OF[ev.to]);
+        feet(A, false); A.statusEl.style.display = 'none';
+        A.dir = B.x >= A.x ? 1 : -1;
+        say(ev.from, ev.say); logSim(ev.from, ev.to, ev.say); await sleep(3000);
+        say(ev.to, ev.reply); logSim(ev.to, ev.from, ev.reply); await sleep(3000);
+        B.busy = false;
+      }
+      await goHome(ev.from);
+      feet(A, false);
+    } finally { A.busy = false; }
+  }
+  let evI = 0;
+  const schedule = () => {
+    const running = Object.values(actors).filter((a) => a.busy && a.path.length).length;
+    if (running >= 2) return;
+    for (let k = 0; k < EVENTS.length; k++) {
+      const ev = EVENTS[(evI + k) % EVENTS.length];
+      if (actors[ev.from].busy || (ev.to !== 'cafe' && actors[ev.to].busy)) continue;
+      evI = (evI + k + 1) % EVENTS.length; runEvent(ev); return;
+    }
+  };
+  if (!reduce) { setTimeout(schedule, 600); setTimeout(schedule, 2600); setInterval(schedule, 4200); }
+
+  // ---- loop
+  let last = performance.now(), sortT = 0;
+  const frame = (t) => {
+    const dt = Math.min(.05, (t - last) / 1000); last = t;
+    Object.values(actors).forEach((a) => {
+      a.t += dt;
+      if (a.path.length) {
+        const [tx, ty] = a.path[0]; const dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy), step = 120 * dt;
+        if (Math.abs(dx) > .5) a.dir = dx > 0 ? 1 : -1;
+        if (d <= step) { a.x = tx; a.y = ty; a.path.shift(); if (!a.path.length && a.onArrive) { const f = a.onArrive; a.onArrive = null; f(); } }
+        else { a.x += dx / d * step; a.y += dy / d * step; }
+      }
+      const bob = a.path.length ? Math.abs(Math.sin(a.t * 10)) * -3 : 0;
+      a.el.setAttribute('transform', `translate(${a.x.toFixed(1)} ${(a.y + bob).toFixed(1)})`);
+      a.el.firstChild.setAttribute('transform', `scale(${a.dir} 1)`);
+      if (a.bubble) a.bubble.setAttribute('transform', `translate(${a.x.toFixed(1)} ${a.y.toFixed(1)})`);
+    });
+    sortT += dt;
+    if (sortT > .3) { sortT = 0; Object.values(actors).sort((p, q) => p.y - q.y).forEach((a) => actorsG.append(a.el)); }
+    if (follow) { const a = actors[follow]; camT.cx = a.x; camT.cy = a.y - 50; clampCam(camT); }
+    const k = Math.min(1, dt * 6); cam.cx += (camT.cx - cam.cx) * k; cam.cy += (camT.cy - cam.cy) * k; cam.z += (camT.z - cam.z) * k;
+    applyCam();
+    requestAnimationFrame(frame);
+  };
+  { const { vw, vh, base } = view(); if (vh > vw) { const zc = Math.max(vw / MAP_W, vh / MAP_H) / base; camT.z = cam.z = Math.min(5, zc * .92); camT.cx = cam.cx = 640; } }
+  clampCam(camT); Object.assign(cam, camT); applyCam(); requestAnimationFrame(frame);
+
+  // ---- side panel
+  const side = document.getElementById('side');
+  let selected = null;
+  function feedList(items, empty) {
+    const ul = el('ul', 'feed');
+    if (!items.length) { const li = el('li', null, empty); li.style.display = 'block'; li.style.color = 'var(--ink-2)'; ul.append(li); }
+    items.forEach((f) => {
+      const li = el('li'); li.append(el('span', 't', f.t));
+      const body = el('span'); const tg = el('span', 'tag', BOT[f.from].ma); tg.style.background = colors[f.from];
+      body.append(tg); if (f.to) { body.append(document.createTextNode('→ ')); const t2 = el('span', 'tag', BOT[f.to].ma); t2.style.background = colors[f.to]; body.append(t2); }
+      body.append(document.createTextNode(f.text)); li.append(body); ul.append(li);
+    });
+    return ul;
+  }
+  function realLog(rows) {
+    const ul = el('ul', 'feed');
+    rows.forEach((r) => { const li = el('li'); li.append(el('span', 't', r.gio.split(' ')[1] || r.gio)); const b = el('span'); const tg = el('span', 'tag', BOT[r.bot].ma); tg.style.background = colors[r.bot]; b.append(tg, document.createTextNode(r.viec), el('span', 'r', r.ket_qua)); li.append(b); ul.append(li); });
+    return ul;
+  }
+  function renderSide() {
+    side.replaceChildren();
+    if (!selected) {
+      const h = el('div', 'side-h'); h.append(el('h2', null, 'Đang diễn ra'), el('span', null, 'mô phỏng'));
+      side.append(h, feedList(simFeed.slice(0, 8), 'Các bạn đang làm việc tại bàn…'));
+      side.append(el('p', 'note', 'Cảnh đi lại và trò chuyện được dựng từ kế hoạch 15 ngày. Nhật ký dưới đây là việc đã làm thật.'));
+      const h2 = el('div', 'side-h'); h2.append(el('h2', null, 'Nhật ký thật'), el('span', null, D.activity.length + ' việc'));
+      side.append(h2, realLog(sorted));
+      return;
+    }
+    const id = selected, b = BOT[id], s = state[id];
+    const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, b.ma + ' · ' + SPECIES[id].label), el('span', null, b.ten + ' · ' + deptName(id)));
+    who.append(avatar(id, s.st === 'idle' ? 'idle' : 'on'), t);
+    const pill = el('span', 'pill' + (s.st === 'on' ? ' on' : s.st === 'wait' ? ' wait' : '')); pill.append(el('i'), document.createTextNode(s.label));
+    const now = el('div', 'box'); now.append(el('span', 'k', 'Việc đang làm'), document.createTextNode(s.task));
+    const tasks = el('ul', 'list');
+    s.rows.forEach((r) => { const li = el('li'); li.append(el('span', 'tag', 'N' + r.ngay)); li.firstChild.style.background = colors[id]; const sp = el('span', null, r.viec); sp.append(el('span', 'st' + (r.trang_thai === 'Chờ bạn' ? ' wait' : r.trang_thai === 'Xong' ? ' done' : ''), r.lich + ' · ' + r.trang_thai)); li.append(sp); tasks.append(li); });
+    const btns = el('div', 'doors');
+    const go = el('button', 'btn', 'Vào ' + deptName(id) + ' →'); go.type = 'button'; go.addEventListener('click', () => { location.hash = 'phong-' + DEPT_OF[id]; });
+    const x = el('button', 'btn ghost', 'Bỏ chọn'); x.type = 'button'; x.addEventListener('click', () => select(null));
+    btns.append(go, x);
+    side.append(who, pill, now);
+    if (s.rows.length) { const h = el('div', 'side-h'); h.append(el('h2', null, 'Lịch của ' + b.ma), el('span', null, s.rows.filter((r) => r.trang_thai === 'Xong').length + '/' + s.rows.length + ' xong')); side.append(h, tasks); }
+    const mine = sorted.filter((r) => r.bot === id);
+    if (mine.length) { const h = el('div', 'side-h'); h.append(el('h2', null, 'Đã làm')); side.append(h, realLog(mine)); }
+    side.append(btns);
+  }
+  function select(id, followIt) {
+    selected = id; setFollow(id && followIt ? id : null); renderSide();
+  }
+  renderSide();
+
+  // ---- panels
+  panels(D, state, dayN, now, today, colors, BOT);
+
+  // ---- room page + router
+  const roomView = document.getElementById('view-room'), mapView = document.getElementById('view-map');
+  function showRoom(id) {
+    if (!DEPTS[id]) { location.hash = ''; return; }
+    const d = DEPTS[id];
+    roomView.replaceChildren();
+    const top = el('div', 'room-top card');
+    const back = el('button', 'btn ghost', '← Bản đồ'); back.type = 'button'; back.addEventListener('click', () => { location.hash = ''; });
+    const tt = el('div', 'grow'); tt.append(el('h2', null, d.name), el('span', null, d.members.length ? d.members.map((m) => BOT[m].ma + ' · ' + SPECIES[m].label).join('  ·  ') : (id === 'cafe' ? 'Nơi các bạn nghỉ tay' : 'Nơi cả đội họp và xem số liệu')));
+    const doors = el('div', 'doors');
+    Object.keys(DEPTS).filter((k) => k !== id).forEach((k) => { const b = el('button', 'btn ghost', DEPTS[k].name); b.type = 'button'; b.style.fontSize = '13px'; b.style.padding = '4px 10px'; b.addEventListener('click', () => { location.hash = 'phong-' + k; }); doors.append(b); });
+    top.append(back, tt, doors);
+    const vw = el('div', 'room-view card'); vw.innerHTML = roomFront(D, state, id);
+    roomView.append(top, vw);
+    const grid = el('div', 'room-grid');
+    d.members.forEach((m) => {
+      const s = state[m]; const c = el('div', 'member card');
+      const who = el('div', 'who'); const t = el('div'); t.append(el('b', null, BOT[m].ma + ' · ' + SPECIES[m].label), el('span', null, BOT[m].ten));
+      who.append(avatar(m, s.st === 'idle' ? 'idle' : 'on'), t);
+      const pill = el('span', 'pill' + (s.st === 'on' ? ' on' : s.st === 'wait' ? ' wait' : '')); pill.append(el('i'), document.createTextNode(s.label));
+      const box = el('div', 'box'); box.append(el('span', 'k', 'Việc đang làm'), document.createTextNode(s.task));
+      const ul = el('ul', 'list'); s.rows.forEach((r) => { const li = el('li'); const tg = el('span', 'tag', 'N' + r.ngay); tg.style.background = colors[m]; const sp = el('span', null, r.viec); sp.append(el('span', 'st' + (r.trang_thai === 'Chờ bạn' ? ' wait' : r.trang_thai === 'Xong' ? ' done' : ''), r.lich + ' · ' + r.trang_thai + (r.ghi_chu ? ' · ' + r.ghi_chu : ''))); li.append(tg, sp); ul.append(li); });
+      c.append(who, pill, box); if (s.rows.length) c.append(ul); else c.append(el('p', 'note', 'Chưa có việc riêng trong lịch 15 ngày.'));
+      grid.append(c);
+    });
+    const contact = el('div', 'contact card');
+    const ev = EVENTS.filter((e) => e.to !== 'cafe' && (d.members.includes(e.from) || d.members.includes(e.to)));
+    const hh = el('div', 'side-h'); hh.append(el('h2', null, id === 'cafe' ? 'Ai hay ghé' : 'Liên lạc với phòng khác'), el('span', null, 'theo kế hoạch'));
+    contact.append(hh);
+    const ul = el('ul', 'list');
+    const list = id === 'cafe' ? EVENTS.filter((e) => e.to === 'cafe') : id === 'meet' ? [] : ev;
+    list.forEach((e) => { const li = el('li'); const tg = el('span', 'tag', BOT[e.from].ma); tg.style.background = colors[e.from]; const sp = el('span', null, (e.to !== 'cafe' ? '→ ' + BOT[e.to].ma + ' (' + deptName(e.to) + '): ' : '') + e.say); if (e.reply) sp.append(el('span', 'st', BOT[e.to].ma + ': ' + e.reply)); li.append(tg, sp); ul.append(li); });
+    if (id === 'meet') { const li = el('li'); li.append(el('span', 'tag', 'GSC'), el('span', null, `${nf.format(g.luot_hien_thi)} hiển thị · ${g.luot_nhap} nhấp · vị trí TB ${nf1.format(g.vi_tri_tb)} (${g.ky})`)); li.firstChild.style.background = '#46557a'; ul.append(li); }
+    contact.append(ul);
+    const logs = sorted.filter((r) => d.members.includes(r.bot));
+    if (logs.length) { const lc = el('div', 'contact card'); const h3 = el('div', 'side-h'); h3.append(el('h2', null, 'Việc đã làm thật'), el('span', null, logs.length + ' việc')); lc.append(h3, realLog(logs)); grid.append(lc); }
+    grid.prepend(contact);
+    roomView.append(grid);
+    mapView.hidden = true; roomView.hidden = false; tick(); window.scrollTo(0, 0);
+  }
+  function routeView() {
+    const h = location.hash.slice(1);
+    if (h.startsWith('phong-')) showRoom(h.slice(6));
+    else { roomView.hidden = true; mapView.hidden = false; clampCam(camT); applyCam(); }
+  }
+  window.addEventListener('hashchange', routeView); routeView();
+  document.getElementById('foot-upd').textContent = 'Bản dựng ' + D.meta.built;
+}
+
+/* ---------- room page drawing (front view) ---------- */
+function roomFront(D, state, id) {
+  const bots = Object.fromEntries(D.bots.map((b) => [b.bot, b]));
+  const W = 960, H = 480, r = { x: 0, y: 0, w: W, h: H }, d = DEPTS[id], floor = H - 14;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(d.name)}" xmlns="http://www.w3.org/2000/svg">` + roomShell(r, d);
+  let front = '';
+  if (id === 'boss') {
+    s += windowBox(70, 90, 170, 150) + clockFace(W - 110, 130, 40, true) + bookcase(W - 150, floor, 100, 210) + plant(60, floor, .9);
+    s += `<ellipse cx="${W / 2}" cy="${floor - 6}" rx="270" ry="22" ${S('#b8664f')}/><ellipse cx="${W / 2}" cy="${floor - 6}" rx="240" ry="13" fill="none" stroke="#f0d3a8" stroke-width="3" stroke-dasharray="10 8"/>`;
+    const dy = floor - 86 * 1.12, cx = W / 2;
+    front += `<g transform="translate(${cx} ${dy}) scale(1.12) translate(${-cx} ${-dy})">${station(bots.chief, cx, dy, state.chief, true)}</g>`;
+  } else if (id === 'meet') {
+    const bx = 80, bw = 520, by = 70, bh = 190, g = D.gsc, fmt = new Intl.NumberFormat('vi-VN');
+    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="8" ${S('#fbfaf5')}/><rect x="${bx + 10}" y="${by + bh - 4}" width="${bw - 20}" height="10" rx="3" ${S('#c9cec9', 'stroke-width="3.5"')}/>`;
+    s += `<text x="${bx + 20}" y="${by + 34}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="22" fill="#46557a">Search Console · 90 ngày</text>`;
+    s += `<text x="${bx + 20}" y="${by + 62}" font-family="Baloo 2, sans-serif" font-weight="700" font-size="17" fill="${INK}">${fmt.format(g.luot_hien_thi)} hiển thị · ${fmt.format(g.luot_nhap)} nhấp · hạng ${String(g.vi_tri_tb).replace('.', ',')}</text>`;
+    const pts = [0.15, 0.3, 0.22, 0.45, 0.38, 0.6, 0.52, 0.72], cw = bw - 160, ch = bh - 104;
+    s += `<path d="M ${bx + 22},${by + 80} L ${bx + 22},${by + 80 + ch} L ${bx + 22 + cw},${by + 80 + ch}" ${L(3, 'stroke="#6e5b4c"')}/>`;
+    s += `<path d="${pts.map((v, i) => `${i ? 'L' : 'M'} ${(bx + 30 + i * (cw - 14) / (pts.length - 1)).toFixed(1)},${(by + 76 + ch - v * ch).toFixed(1)}`).join(' ')}" fill="none" stroke="#b8483a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    s += `<g transform="translate(${bx + bw - 112} ${by + 80}) rotate(4)"><rect x="0" y="0" width="90" height="72" ${S('#f3d272', 'stroke-width="3"')}/><text x="45" y="30" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="15" fill="${INK}">Ngày</text><text x="45" y="57" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="23" fill="${INK}">${D._day}/15</text></g>`;
+    s += meetingTable(W / 2 - 40, floor) + plant(W - 70, floor, .85) + windowBox(W - 250, 90, 150, 140);
+  } else if (id === 'cafe') {
+    s += cafeCorner(r, floor) + windowBox(W - 230, 84, 150, 130);
+  } else {
+    const m = d.members; const xs = m.length === 2 ? [W * .3, W * .7] : [W * .4];
+    if (id === 'data') s += poster(W / 2 - 50, 80, 100, 78, 'bars') + windowBox(60, 90, 120, 110) + plant(W - 60, floor, .85);
+    if (id === 'sales') s += poster(W / 2 - 55, 80, 110, 76, 'map') + plant(60, floor, .85) + windowBox(W - 180, 90, 120, 110);
+    if (id === 'tech') s += poster(W - 300, 70, 100, 76, 'blue') + rackBox(W - 170, floor) + plant(60, floor, .85);
+    if (id === 'content') s += poster(W - 330, 66, 110, 86, 'cork') + bookcase(W - 180, floor, 100, 220) + plant(60, floor, .85);
+    m.forEach((mid, i) => { front += station(bots[mid], xs[i], floor - 74, state[mid], false); });
+  }
+  s += signBoard(W / 2, 16, d.name) + front + `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="4" ${L(5)}/></svg>`;
+  return s;
+}
+
+/* ---------- report panels ---------- */
+function panels(D, state, dayN, now, today, colors, BOT) {
+  const g = D.gsc;
+  document.getElementById('gsc-range').textContent = g.ky;
+  const kp = [['Lượt nhấp', nf.format(g.luot_nhap), '90 ngày'], ['Lượt hiển thị', nf.format(g.luot_hien_thi), '90 ngày'], ['CTR', pct.format(g.ctr), 'trung bình'],
+    ['Vị trí TB', nf1.format(g.vi_tri_tb), 'càng nhỏ càng tốt'], ['Đã lập chỉ mục', nf.format(g.trang_da_index), 'trang'], ['Chưa lập chỉ mục', nf.format(g.trang_chua_index), 'trang']];
+  document.getElementById('kpis').replaceChildren(...kp.map(([k, v, s]) => { const d = el('div', 'kpi'); d.append(el('span', 'k', k), el('span', 'v', v), el('span', 's', s)); return d; }));
+  const box = document.getElementById('qmap');
+  const W = 520, H = 200, m = { l: 34, r: 12, t: 12, b: 30 };
+  const x = (v) => m.l + (Math.min(v, 105) / 105) * (W - m.l - m.r);
+  const y = (v) => H - m.b - (Math.log10(Math.max(v, 1)) / 2) * (H - m.t - m.b);
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Vị trí và lượt hiển thị của từng truy vấn');
+  const add = (tag, attrs, text) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; svg.append(n); return n; };
+  add('rect', { x: x(0), y: m.t, width: x(20) - x(0), height: H - m.t - m.b, fill: '#e3efd8', stroke: INK, 'stroke-width': 2, rx: 6 });
+  add('text', { x: x(0) + 8, y: m.t + 16, fill: '#4f8a3c', 'font-size': 12, 'font-weight': 800, 'font-family': 'Baloo 2, sans-serif' }, 'Top 20');
+  [1, 10, 100].forEach((v) => { add('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: '#d9d2c4', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' }); add('text', { x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', fill: '#a3958a', 'font-size': 11, 'font-family': 'Be Vietnam Pro, sans-serif' }, v); });
+  [1, 20, 50].forEach((v) => add('text', { x: x(v), y: H - 10, 'text-anchor': 'middle', fill: '#a3958a', 'font-size': 11, 'font-family': 'Be Vietnam Pro, sans-serif' }, v));
+  add('text', { x: W - m.r, y: H - 10, 'text-anchor': 'end', fill: '#6e5b4c', 'font-size': 11, 'font-weight': 600, 'font-family': 'Be Vietnam Pro, sans-serif' }, 'vị trí trên Google →');
+  const tip = el('div', 'tip'); tip.hidden = true;
+  const cmap = { 'Dịch vụ': '#4f7393', 'Thương hiệu': '#d9a441', 'Dự án': '#a8566a', 'Không liên quan': '#cfc6b8' };
+  D.queries.forEach((q) => {
+    const c = add('circle', { cx: x(q.vi_tri), cy: y(q.luot_hien_thi), r: q.loai === 'Dịch vụ' && q.vi_tri <= 20 ? 6 : 4.5, fill: cmap[q.loai] || '#cfc6b8', stroke: INK, 'stroke-width': 1.8 });
+    c.addEventListener('mouseenter', (ev) => { tip.replaceChildren(el('div', 's', q.loai), el('div', null, q.truy_van), el('div', 's', `vị trí ${nf1.format(q.vi_tri)} · ${q.luot_hien_thi} hiển thị`)); tip.hidden = false; const r = box.getBoundingClientRect(); tip.style.left = Math.min(ev.clientX - r.left + 10, r.width - 200) + 'px'; tip.style.top = Math.max(ev.clientY - r.top - 58, 0) + 'px'; });
+    c.addEventListener('mouseleave', () => { tip.hidden = true; });
+  });
+  box.append(svg, tip);
+  const tl = document.getElementById('timeline');
+  for (let dd = 1; dd <= 15; dd++) {
+    const rows = D.plan.filter((r) => r.ngay === dd);
+    const col = el('div', 'day' + (dd === dayN ? ' today' : '')); col.title = rows.map((r) => `${r.trang_thai}: ${r.viec}`).join('\n');
+    col.append(el('span', 'd', rows[0] ? rows[0].lich.split('/')[0] : dd));
+    (rows.length ? rows : [null]).forEach((r) => col.append(el('span', 'blk' + (!r ? '' : r.trang_thai === 'Xong' ? ' done' : r.trang_thai === 'Chờ bạn' ? ' wait' : r.trang_thai === 'Đang làm' ? ' doing' : ''))));
+    tl.append(col);
+  }
+  const done = D.plan.filter((r) => r.trang_thai === 'Xong').length;
+  document.getElementById('tl-progress').textContent = `${done}/${D.plan.length} việc xong`;
+  document.getElementById('today-date').textContent = `${now.getDate()}/${now.getMonth() + 1}`;
+  const tlist = document.getElementById('today');
+  const todayRows = D.plan.filter((r) => r.date === today);
+  if (!todayRows.length) tlist.append(el('li', null, 'Hôm nay không có việc trong lịch.'));
+  todayRows.forEach((r) => { const li = el('li'); const t = el('span', 'tag', BOT[r.bot].ma); t.style.background = colors[r.bot]; const b = el('span', null, r.viec); b.append(el('span', 'st' + (r.trang_thai === 'Chờ bạn' ? ' wait' : r.trang_thai === 'Xong' ? ' done' : ''), r.trang_thai + (r.ghi_chu ? ' · ' + r.ghi_chu : ''))); li.append(t, b); tlist.append(li); });
+  const tg = document.getElementById('targets');
+  D.targets.forEach((t) => { const row = el('div', 'tg'); const bar = el('div', 'bar'); const bi = el('i'); bi.style.width = Math.min(100, t.muc_tieu ? t.moc / t.muc_tieu * 100 : 0) + '%'; bar.append(bi); row.append(el('span', null, t.chi_so), el('span', 'chip', `${t.moc} → ${t.muc_tieu}`), bar); tg.append(row); });
+  const lv = ['Cao', 'Trung bình', 'Thấp'], lc = ['#b8483a', '#c98a17', '#6e5b4c'];
+  const open = D.audit.filter((a) => a.trang_thai !== 'Xong');
+  document.getElementById('audit-open').textContent = `${open.length}/${D.audit.length} chưa sửa`;
+  document.getElementById('issues').replaceChildren(...lv.map((l, i) => { const d = el('div', 'issue'); const v = el('span', 'v', open.filter((a) => a.muc_do === l).length); v.style.color = lc[i]; d.append(v, el('span', 'k', 'Mức ' + l.toLowerCase())); return d; }));
+}
+
+</script>
+</body>
+</html>
