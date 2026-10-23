@@ -606,7 +606,7 @@ function panels(D, state, dayN, now, today, colors, BOT) {
   const tg = document.getElementById('targets');
   D.targets.forEach((t) => { const row = el('div', 'tg'); const bar = el('div', 'bar'); const bi = el('i'); bi.style.width = Math.min(100, t.muc_tieu ? t.moc / t.muc_tieu * 100 : 0) + '%'; bar.append(bi); row.append(el('span', null, t.chi_so), el('span', 'chip', `${t.moc} → ${t.muc_tieu}`), bar); tg.append(row); });
   const lv = ['Cao', 'Trung bình', 'Thấp'], lc = ['#b8483a', '#c98a17', '#6e5b4c'];
-  const open = D.audit.filter((a) => a.trang_thai !== 'Xong');
+  const open = D.audit.filter((a) => a.trang_thai !== 'Xong' && a.trang_thai !== 'Không phải lỗi');
   document.getElementById('audit-open').textContent = `${open.length}/${D.audit.length} chưa sửa`;
   document.getElementById('issues').replaceChildren(...lv.map((l, i) => { const d = el('div', 'issue'); const v = el('span', 'v', open.filter((a) => a.muc_do === l).length); v.style.color = lc[i]; d.append(v, el('span', 'k', 'Mức ' + l.toLowerCase())); return d; }));
 }
