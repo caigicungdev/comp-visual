@@ -15,7 +15,7 @@ Trang mô phỏng "phòng SEO" của ticosystem.com: 7 bot (khỉ Chief, cú, g�
 
 ## Bảo mật
 
-Số liệu chỉ có trong `public/data.enc.json` dưới dạng mã hóa AES-256-GCM (khóa sinh từ mật khẩu bằng PBKDF2-SHA256, 250.000 vòng). Số liệu gốc (`data/`) và mật khẩu (`.password`) bị `.gitignore` nên không có trên GitHub.
+Ai có link đều xem được văn phòng: nhân vật, phòng ban, việc trong lịch và tên việc đã làm (`public/data.public.json`, không có số liệu). Số liệu Search Console, kết quả chi tiết trong nhật ký, mục tiêu và danh sách lỗi chỉ có trong `public/data.enc.json` dưới dạng mã hóa AES-256-GCM (khóa sinh từ mật khẩu bằng PBKDF2-SHA256, 250.000 vòng). Số liệu gốc (`data/`) và mật khẩu (`.password`) bị `.gitignore` nên không có trên GitHub.
 
 ## Cập nhật
 

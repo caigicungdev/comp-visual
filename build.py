@@ -20,7 +20,7 @@ def build_ui():
     open(os.path.join(OUT, "index.html"), "w", encoding="utf-8").write(html)
     open(os.path.join(OUT, "_headers"), "w").write(
         "/*\n  X-Robots-Tag: noindex, nofollow\n  X-Frame-Options: DENY\n  Referrer-Policy: no-referrer\n"
-        "/data.enc.json\n  Cache-Control: no-store\n")
+        "/data.enc.json\n  Cache-Control: no-store\n/data.public.json\n  Cache-Control: no-store\n")
     open(os.path.join(OUT, "robots.txt"), "w").write("User-agent: *\nDisallow: /\n")
     print("public/index.html", len(html), "bytes")
 
@@ -40,6 +40,12 @@ def build_data():
         "bots": L("bots.json"), "plan": L("plan.json"), "activity": L("activity.json"),
         "gsc": L("gsc_summary.json")[0], "queries": L("gsc_queries.json"), "targets": L("targets.json"), "audit": L("audit.json"),
     }
+    public = {
+        "meta": data["meta"], "bots": data["bots"],
+        "plan": [{k: r[k] for k in ("id", "ngay", "date", "lich", "bot", "bot_ten", "viec", "trang_thai") if k in r} for r in data["plan"]],
+        "activity": [{k: r[k] for k in ("id", "luc", "gio", "bot", "bot_ten", "ma", "viec")} for r in data["activity"]],
+    }
+    json.dump(public, open(os.path.join(OUT, "data.public.json"), "w", encoding="utf-8"), ensure_ascii=False)
     salt, iv, it = secrets.token_bytes(16), secrets.token_bytes(12), 250000
     key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=it).derive(pw.encode())
     ct = AESGCM(key).encrypt(iv, json.dumps(data, ensure_ascii=False).encode(), None)

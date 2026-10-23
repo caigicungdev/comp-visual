@@ -4,3 +4,5 @@
   Referrer-Policy: no-referrer
 /data.enc.json
   Cache-Control: no-store
+/data.public.json
+  Cache-Control: no-store

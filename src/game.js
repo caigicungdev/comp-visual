@@ -150,10 +150,17 @@ function spriteSVG(id, mode) {
 /* ---------- app ---------- */
 const form = document.getElementById('lock-form');
 document.getElementById('lock-ava').innerHTML = head('chief', 'on');
+let APP = null;
+(async () => {
+  try { const P = await (await fetch('data.public.json?v=' + Date.now(), { cache: 'no-store' })).json(); APP = start(P); }
+  catch (x) { console.error(x); }
+})();
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = document.getElementById('err'); err.textContent = '';
-  try { start(await unlock(document.getElementById('pw').value)); } catch (x) { console.error(x); err.textContent = 'Sai mật khẩu rồi. Thử lại nhé.'; }
+  let full;
+  try { full = await unlock(document.getElementById('pw').value); } catch (x) { err.textContent = 'Sai mật khẩu rồi. Thử lại nhé.'; return; }
+  if (APP) APP.unlockFull(full);
 });
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
 const NS = 'http://www.w3.org/2000/svg';
@@ -166,8 +173,7 @@ const hhmm = () => { const n = vnNow(); return String(n.getHours()).padStart(2, 
 function avatar(id, mode, cls) { const s = document.createElementNS(NS, 'svg'); s.setAttribute('viewBox', '-75 -80 150 150'); s.setAttribute('aria-hidden', 'true'); if (cls) s.setAttribute('class', cls); s.innerHTML = head(id, mode); return s; }
 
 function start(D) {
-  document.getElementById('lock').hidden = true;
-  document.getElementById('app').hidden = false;
+  D.full = !!D.gsc;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!reduce) document.getElementById('app').classList.add('anim');
   const now = vnNow(), today = isoDate(now);
@@ -196,7 +202,7 @@ function start(D) {
   document.getElementById('brand-ava').innerHTML = head('chief', 'on');
   document.getElementById('site-name').textContent = D.meta.site + ' · TicoSystem';
   document.getElementById('chip-day').textContent = dayN;
-  const sorted = [...D.activity].sort((a, b) => String(b.luc).localeCompare(String(a.luc)));
+  let sorted = [...D.activity].sort((a, b) => String(b.luc).localeCompare(String(a.luc)));
   document.getElementById('chip-live').textContent = 'Cập nhật ' + (sorted[0] ? sorted[0].gio : '');
   const clock = document.getElementById('chip-clock');
   const tick = () => {
@@ -347,22 +353,25 @@ function start(D) {
   const visitPoint = (target, i) => target === 'chief' ? GUEST[i % 2] : [HOME[target][0] + (i % 2 ? 46 : -46), 336];
 
   // ---- scripted interactions (from the real plan + numbers)
+  const buildEvents = () => {
   const g = D.gsc;
-  const quick = D.queries.filter((q) => q.loai === 'Dịch vụ' && q.vi_tri <= 20).length;
-  const EVENTS = [
+  const quick = D.full ? D.queries.filter((q) => q.loai === 'Dịch vụ' && q.vi_tri <= 20).length : 0;
+  return [
     { from: 'scan', to: 'writer', say: 'Gửi bạn 20 từ khóa nè!', reply: 'Cảm ơn, mình đưa vào bài ngay' },
-    { from: 'report', to: 'chief', say: `Báo cáo: ${nf.format(g.luot_hien_thi)} hiển thị, ${g.luot_nhap} nhấp`, reply: 'Theo dõi mỗi sáng nhé!' },
+    { from: 'report', to: 'chief', say: D.full ? `Báo cáo: ${nf.format(g.luot_hien_thi)} hiển thị, ${g.luot_nhap} nhấp` : 'Báo cáo số liệu sáng nay xong rồi ạ', reply: 'Theo dõi mỗi sáng nhé!' },
     { from: 'tech', to: 'chief', say: 'Sửa sitemap cần quyền vào web ạ', reply: 'Để mình xin quyền chủ web' },
     { from: 'writer', to: 'chief', say: 'Xong nháp 5 bài rồi ạ', reply: 'Tuyệt, chờ điền chỗ ⚠️ nhé' },
     { from: 'chief', to: 'tech', say: 'Ưu tiên sitemap và hreflang', reply: 'Rõ, sếp!' },
     { from: 'local', to: 'outreach', say: 'Ngày 3 mình lập Google Business', reply: 'Ngày 10 mình lo LinkedIn' },
-    { from: 'scan', to: 'report', say: `${quick} từ khóa đang ở top 20`, reply: 'Mình theo dõi thứ hạng nhé' },
+    { from: 'scan', to: 'report', say: D.full ? `${quick} từ khóa đang ở top 20` : 'Danh sách từ khóa đã chốt', reply: 'Mình theo dõi thứ hạng nhé' },
     { from: 'tech', to: 'writer', say: 'Nhớ thêm schema FAQ cho bài', reply: 'Ok, mình ghi chú lại' },
     { from: 'chief', to: 'local', say: 'Chuẩn bị hồ sơ Clutch nhé', reply: 'Dạ, ngày 8 xong ạ' },
     { from: 'outreach', to: 'cafe', say: 'Đi pha ly cà phê đã ☕' },
     { from: 'local', to: 'cafe', say: 'Nghỉ tay chút ☕' },
     { from: 'report', to: 'cafe', say: 'Cà phê rồi đọc số tiếp' },
   ];
+  };
+  let EVENTS = buildEvents();
   const cafeTaken = new Set();
   async function runEvent(ev) {
     const A = actors[ev.from]; A.busy = true;
@@ -441,7 +450,7 @@ function start(D) {
   }
   function realLog(rows) {
     const ul = el('ul', 'feed');
-    rows.forEach((r) => { const li = el('li'); li.append(el('span', 't', r.gio.split(' ')[1] || r.gio)); const b = el('span'); const tg = el('span', 'tag', BOT[r.bot].ma); tg.style.background = colors[r.bot]; b.append(tg, document.createTextNode(r.viec), el('span', 'r', r.ket_qua)); li.append(b); ul.append(li); });
+    rows.forEach((r) => { const li = el('li'); li.append(el('span', 't', r.gio.split(' ')[1] || r.gio)); const b = el('span'); const tg = el('span', 'tag', BOT[r.bot].ma); tg.style.background = colors[r.bot]; b.append(tg, document.createTextNode(r.viec)); if (r.ket_qua) b.append(el('span', 'r', r.ket_qua)); li.append(b); ul.append(li); });
     return ul;
   }
   function renderSide() {
@@ -449,7 +458,7 @@ function start(D) {
     if (!selected) {
       const h = el('div', 'side-h'); h.append(el('h2', null, 'Đang diễn ra'), el('span', null, 'mô phỏng'));
       side.append(h, feedList(simFeed.slice(0, 8), 'Các bạn đang làm việc tại bàn…'));
-      side.append(el('p', 'note', 'Cảnh đi lại và trò chuyện được dựng từ kế hoạch 15 ngày. Nhật ký dưới đây là việc đã làm thật.'));
+      side.append(el('p', 'note', 'Cảnh đi lại và trò chuyện được dựng từ kế hoạch 15 ngày. Nhật ký dưới đây là việc đã làm thật.' + (D.full ? '' : ' Kết quả chi tiết và số liệu nằm trong phần khóa bên dưới.')));
       const h2 = el('div', 'side-h'); h2.append(el('h2', null, 'Nhật ký thật'), el('span', null, D.activity.length + ' việc'));
       side.append(h2, realLog(sorted));
       return;
@@ -477,7 +486,8 @@ function start(D) {
   renderSide();
 
   // ---- panels
-  panels(D, state, dayN, now, today, colors, BOT);
+  const showFull = () => { document.getElementById('locked').hidden = true; document.getElementById('ops').hidden = false; panels(D, state, dayN, now, today, colors, BOT); };
+  if (D.full) showFull();
 
   // ---- room page + router
   const roomView = document.getElementById('view-room'), mapView = document.getElementById('view-map');
@@ -511,7 +521,8 @@ function start(D) {
     const ul = el('ul', 'list');
     const list = id === 'cafe' ? EVENTS.filter((e) => e.to === 'cafe') : id === 'meet' ? [] : ev;
     list.forEach((e) => { const li = el('li'); const tg = el('span', 'tag', BOT[e.from].ma); tg.style.background = colors[e.from]; const sp = el('span', null, (e.to !== 'cafe' ? '→ ' + BOT[e.to].ma + ' (' + deptName(e.to) + '): ' : '') + e.say); if (e.reply) sp.append(el('span', 'st', BOT[e.to].ma + ': ' + e.reply)); li.append(tg, sp); ul.append(li); });
-    if (id === 'meet') { const li = el('li'); li.append(el('span', 'tag', 'GSC'), el('span', null, `${nf.format(g.luot_hien_thi)} hiển thị · ${g.luot_nhap} nhấp · vị trí TB ${nf1.format(g.vi_tri_tb)} (${g.ky})`)); li.firstChild.style.background = '#46557a'; ul.append(li); }
+    if (id === 'meet' && !D.full) { const li = el('li'); li.append(el('span', 'tag', 'GSC'), el('span', null, 'Số liệu Search Console nằm trong phần khóa trên bản đồ.')); li.firstChild.style.background = '#46557a'; ul.append(li); }
+    if (id === 'meet' && D.full) { const li = el('li'); li.append(el('span', 'tag', 'GSC'), el('span', null, `${nf.format(g.luot_hien_thi)} hiển thị · ${g.luot_nhap} nhấp · vị trí TB ${nf1.format(g.vi_tri_tb)} (${g.ky})`)); li.firstChild.style.background = '#46557a'; ul.append(li); }
     contact.append(ul);
     const logs = sorted.filter((r) => d.members.includes(r.bot));
     if (logs.length) { const lc = el('div', 'contact card'); const h3 = el('div', 'side-h'); h3.append(el('h2', null, 'Việc đã làm thật'), el('span', null, logs.length + ' việc')); lc.append(h3, realLog(logs)); grid.append(lc); }
@@ -526,6 +537,13 @@ function start(D) {
   }
   window.addEventListener('hashchange', routeView); routeView();
   document.getElementById('foot-upd').textContent = 'Bản dựng ' + D.meta.built;
+  return {
+    unlockFull(full) {
+      Object.assign(D, full); D.full = true; D._day = dayN;
+      sorted = [...D.activity].sort((a, b) => String(b.luc).localeCompare(String(a.luc)));
+      EVENTS = buildEvents(); showFull(); renderSide(); routeView();
+    },
+  };
 }
 
 /* ---------- room page drawing (front view) ---------- */
@@ -543,7 +561,8 @@ function roomFront(D, state, id) {
     const bx = 80, bw = 520, by = 70, bh = 190, g = D.gsc, fmt = new Intl.NumberFormat('vi-VN');
     s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="8" ${S('#fbfaf5')}/><rect x="${bx + 10}" y="${by + bh - 4}" width="${bw - 20}" height="10" rx="3" ${S('#c9cec9', 'stroke-width="3.5"')}/>`;
     s += `<text x="${bx + 20}" y="${by + 34}" font-family="Baloo 2, sans-serif" font-weight="800" font-size="22" fill="#46557a">Search Console · 90 ngày</text>`;
-    s += `<text x="${bx + 20}" y="${by + 62}" font-family="Baloo 2, sans-serif" font-weight="700" font-size="17" fill="${INK}">${fmt.format(g.luot_hien_thi)} hiển thị · ${fmt.format(g.luot_nhap)} nhấp · hạng ${String(g.vi_tri_tb).replace('.', ',')}</text>`;
+    s += g ? `<text x="${bx + 20}" y="${by + 62}" font-family="Baloo 2, sans-serif" font-weight="700" font-size="17" fill="${INK}">${fmt.format(g.luot_hien_thi)} hiển thị · ${fmt.format(g.luot_nhap)} nhấp · hạng ${String(g.vi_tri_tb).replace('.', ',')}</text>`
+      : `<text x="${bx + 20}" y="${by + 62}" font-family="Baloo 2, sans-serif" font-weight="700" font-size="17" fill="#6e5b4c">Số liệu nội bộ · cần mật khẩu</text>`;
     const pts = [0.15, 0.3, 0.22, 0.45, 0.38, 0.6, 0.52, 0.72], cw = bw - 160, ch = bh - 104;
     s += `<path d="M ${bx + 22},${by + 80} L ${bx + 22},${by + 80 + ch} L ${bx + 22 + cw},${by + 80 + ch}" ${L(3, 'stroke="#6e5b4c"')}/>`;
     s += `<path d="${pts.map((v, i) => `${i ? 'L' : 'M'} ${(bx + 30 + i * (cw - 14) / (pts.length - 1)).toFixed(1)},${(by + 76 + ch - v * ch).toFixed(1)}`).join(' ')}" fill="none" stroke="#b8483a" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>`;
