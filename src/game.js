@@ -186,7 +186,7 @@ function start(D) {
     const next = rows.filter((r) => r.date > today && r.trang_thai !== 'Xong').sort((x, y) => x.ngay - y.ngay)[0];
     let st = 'idle', label = 'Đang nghỉ', task = next ? `Tiếp theo, ngày ${next.ngay}: ${next.viec}` : 'Chưa có việc trong lịch.';
     if (todays.length && waiting.length === todays.length) { st = 'wait'; label = 'Chờ bạn'; task = waiting[0].viec; }
-    else if (todays.length) { st = 'on'; label = 'Đang làm'; task = todays.find((r) => r.trang_thai !== 'Chờ bạn').viec; }
+    else if (todays.length) { const doing = todays.find((r) => r.trang_thai === 'Đang làm'); st = 'on'; label = doing ? 'Đang làm' : 'Có việc hôm nay'; task = (doing || todays.find((r) => r.trang_thai !== 'Chờ bạn')).viec; }
     else if (recent.length) { st = 'on'; label = 'Vừa xong'; task = recent[recent.length - 1].viec; }
     state[b.bot] = { st, label, task, rows };
   });
